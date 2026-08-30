@@ -2,7 +2,7 @@
   "scripts": [
     {
       "in": "src/video-background.mjs",
-      "out": "video-background.js",
+      "out": "dist/video-background.js",
       "options": {
         "sourcemap": true,
         "minify": true,
@@ -12,7 +12,7 @@
     },
     {
       "in": "src/controls.mjs",
-      "out": "video-background-controls.js",
+      "out": "dist/video-background-controls.js",
       "options": {
         "sourcemap": true,
         "minify": true,
@@ -52,13 +52,13 @@
   "styles": [
     {
       "in": "src/styles/controls.scss",
-      "out": "video-background-controls.css",
+      "out": "dist/video-background-controls.css",
       "options": {
         "minify": true
       }
     },
     {
-      "in": "src/styles/prose.scss",
+      "in": "site/prose.scss",
       "out": "_site/css/prose.css",
       "options": {
         "minify": true,
@@ -69,10 +69,10 @@
   "copy": [
     {
       "in": [
-        "video-background.min.js",
-        "video-background-controls.min.js",
-        "video-background-controls.min.css",
-        "custom-elements.json",
+        "dist/video-background.min.js",
+        "dist/video-background-controls.min.js",
+        "dist/video-background-controls.min.css",
+        "dist/custom-elements.json",
         "node_modules/code-preview-element/dist/code-preview-hljs.min.js",
         "node_modules/code-preview-element/dist/code-preview-options.min.js",
         "node_modules/code-preview-element/dist/code-preview.min.css",

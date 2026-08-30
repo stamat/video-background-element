@@ -8,7 +8,7 @@ description: <video-background> — a video background from a YouTube, Vimeo or 
 # 📺 &lt;video-background&gt;
 [![npm version](https://img.shields.io/npm/v/video-background)](https://www.npmjs.com/package/video-background)
 [![CI](https://img.shields.io/github/actions/workflow/status/stamat/video-background/ci.yml?branch=main&label=CI)](https://github.com/stamat/video-background/actions/workflows/ci.yml)
-[![gzip size](https://img.badgesize.io/stamat/video-background/main/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background/blob/main/video-background.js)
+[![gzip size](https://img.badgesize.io/stamat/video-background/main/dist/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background/blob/main/dist/video-background.js)
 
 A video behind a hero costs more than an iframe: it has to cover the box at the video's
 own ratio, start muted so autoplay is allowed, loop, and stop when it scrolls away or the
@@ -21,7 +21,7 @@ npm install video-background
 ```
 
 ```html
-<script src="https://unpkg.com/video-background/video-background.min.js"></script>
+<script src="https://unpkg.com/video-background/dist/video-background.min.js"></script>
 
 <div class="hero">
   <video-background src="https://www.youtube.com/watch?v=eEpEeyqGlxA"></video-background>

@@ -1,0 +1,6 @@
+// The demo page's one stylesheet, because the poops-docs-theme prose layout links exactly
+// one: the theme, plus the package's own controls stylesheet so a seek bar placed on the
+// page itself is styled. The samples do not need it - they render inside <code-preview>
+// frames, which load video-background-controls.css and preview.css themselves.
+@use "poops-docs-theme/scss/prose-only";
+@use "../src/styles/controls";

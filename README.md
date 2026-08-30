@@ -1,7 +1,7 @@
 # 📺 video-background
 [![npm version](https://img.shields.io/npm/v/video-background)](https://www.npmjs.com/package/video-background)
 [![CI](https://img.shields.io/github/actions/workflow/status/stamat/video-background/ci.yml?branch=main&label=CI)](https://github.com/stamat/video-background/actions/workflows/ci.yml)
-[![gzip size](https://img.badgesize.io/stamat/video-background/main/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background/blob/main/video-background.js)
+[![gzip size](https://img.badgesize.io/stamat/video-background/main/dist/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background/blob/main/dist/video-background.js)
 
 > `<video-background src="…">` — a video background from a YouTube, Vimeo or video file
 > link, as one tag.
@@ -16,7 +16,7 @@ the tab goes idle — get one of those wrong and it plays into the void at full 
 never starts at all and nothing says why. This element is that list, done once:
 
 ```html
-<script src="https://unpkg.com/video-background/video-background.min.js"></script>
+<script src="https://unpkg.com/video-background/dist/video-background.min.js"></script>
 
 <div class="hero">
   <video-background src="https://www.youtube.com/watch?v=eEpEeyqGlxA"></video-background>
@@ -69,9 +69,9 @@ import "video-background/controls.css"; // optional, see Controls
 Or two script tags and no build step, from the package or a CDN:
 
 ```html
-<script src="https://unpkg.com/video-background/video-background.min.js"></script>
-<script src="https://unpkg.com/video-background/video-background-controls.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/video-background/video-background-controls.min.css">
+<script src="https://unpkg.com/video-background/dist/video-background.min.js"></script>
+<script src="https://unpkg.com/video-background/dist/video-background-controls.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/video-background/dist/video-background-controls.min.css">
 ```
 
 The bundles are IIFEs built for ES2019. The first defines `<video-background>` and
@@ -255,10 +255,11 @@ live editor — calls `destroy()` on the old ones before making new ones, or eve
 ever made keeps updating on each tick.
 
 `video-background/controls.css` is the look of the seek bar — the `<progress>` under a
-transparent range, the thumb that appears on hover — and the stacking a group needs. It is
-optional: the classes work without it, and the `.seek-bar-wrapper`, `.seek-bar-progress`
-and `.seek-bar` classes it styles are separate from the `js-` ones the classes read, so
-either can be swapped for your own. `--seek-bar-height`, `--seek-bar-thumb-size`,
+transparent range, the thumb that appears on hover — the row `.seek-bars` lays a bar per
+group member out in, and the stacking a group needs. It is optional: the classes work
+without it, and the `.seek-bars`, `.seek-bar-wrapper`, `.seek-bar-progress` and `.seek-bar`
+classes it styles are separate from the `js-` ones the classes read, so either can be
+swapped for your own. `--seek-bar-height`, `--seek-bar-thumb-size`,
 `--seek-bar-thumb-color`, `--seek-bar-progress-color` and `--seek-bar-color` retheme it.
 
 ### Group

@@ -20,6 +20,12 @@
   display: none;
 }
 
+.seek-bars {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 8px;
+}
+
 .seek-bar-wrapper {
   position: relative;
   width: 100%;

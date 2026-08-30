@@ -53,7 +53,8 @@ keep their names; the page markup and the calls around it go.
 - **`<video-background-group>`**, replacing `VideoBackgroundGroup` and the
   `VideoBackgroundGroups` factory: the backgrounds inside it are the playlist.
 - **`video-background/controls.css`** — `video-background-controls.css` — the look of the
-  seek bar and the stacking a group needs, optional and themed by `--seek-bar-*`.
+  seek bar, the row `.seek-bars` lays one bar per group member out in, and the stacking a
+  group needs, optional and themed by `--seek-bar-*`.
 - **`custom-elements.json`**, generated from the JSDoc on the two element classes, as the
   package's `customElements` key and a `video-background/custom-elements.json` export, for
   editors and for the options panel the demo page builds from it.

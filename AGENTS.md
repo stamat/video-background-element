@@ -18,7 +18,7 @@ script/server    # poops dev server on :4040 with live reload, serves _site/
 script/build     # the manifest, the bundles, the controls css and _site/
 script/test      # jest over src/__tests__, in jsdom
 script/lint      # eslint (the authority; CI runs it)
-npm run manifest # regenerate custom-elements.json from the JSDoc
+npm run manifest # regenerate dist/custom-elements.json from the JSDoc
 ```
 
 ## Layout
@@ -31,13 +31,16 @@ npm run manifest # regenerate custom-elements.json from the JSDoc
 - **`src/controls.mjs` is a separate bundle and must not import the element.** It finds
   `<video-background>` members by tag name through the registry; an import would put a
   second copy of the element inside it.
-- **`src/styles/controls.scss`** becomes `video-background-controls.css`.
-  `src/styles/prose.scss` is the demo page's own stylesheet and ships nowhere.
-- **Committed build output:** `video-background*.js` and `.map`,
-  `video-background-controls*.css`, `custom-elements.json`. CI fails if they are stale.
-  `_site/` is generated and ignored.
-- **`site/index.md` is the demo page.** `site/preview.css` is loaded *inside* the preview
-  frames, not by the page. A new file a frame loads must go in `poops.json`'s copy list.
+- **`src/styles/controls.scss`** becomes `dist/video-background-controls.css`, the only
+  stylesheet the package ships.
+- **`dist/` is the committed build output:** `video-background*.js` and `.map`,
+  `video-background-controls*.{js,css}`, `custom-elements.json`. CI fails if they are
+  stale, and `npm publish` ships what is committed - it does not build. `_site/` is
+  generated and ignored.
+- **`site/` is the demo page and nothing else:** `index.md`, `prose.scss` - the page's one
+  stylesheet, which pulls the theme and `src/styles/controls.scss` - and `preview.css`,
+  loaded *inside* the preview frames rather than by the page. A new file a frame loads must
+  go in `poops.json`'s copy list.
 - **Tests:** `src/__tests__/regressions.test.mjs`. Its header says what jsdom cannot cover.
 
 ## Documentation
@@ -77,9 +80,8 @@ npm run manifest # regenerate custom-elements.json from the JSDoc
   `## [Unreleased]`.
 - **Ask first:** an attribute name or default; an event name; a rule in the element's
   stylesheet, which pages override by name; a dependency.
-- **Never:** edit `custom-elements.json`, the bundles, the controls css or `_site/` by
-  hand; weaken, skip, or delete a test to make it pass; bump the version or publish — a tag
-  does that.
+- **Never:** edit anything in `dist/` or `_site/` by hand; weaken, skip, or delete a
+  test to make it pass; bump the version or publish — a tag does that.
 
 ## Before adding a feature
 

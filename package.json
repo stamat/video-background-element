@@ -2,35 +2,27 @@
   "name": "video-background",
   "version": "0.0.0",
   "description": "<video-background>: a video background from a YouTube, Vimeo or video file link, as a custom element.",
-  "main": "video-background.js",
+  "main": "dist/video-background.js",
   "exports": {
     ".": {
       "import": "./src/video-background.mjs",
-      "default": "./video-background.js"
+      "default": "./dist/video-background.js"
     },
     "./controls": {
       "import": "./src/controls.mjs",
-      "default": "./video-background-controls.js"
+      "default": "./dist/video-background-controls.js"
     },
-    "./custom-elements.json": "./custom-elements.json",
+    "./custom-elements.json": "./dist/custom-elements.json",
     "./*": "./*",
-    "./controls.css": "./video-background-controls.css"
+    "./controls.css": "./dist/video-background-controls.css"
   },
-  "customElements": "custom-elements.json",
+  "customElements": "dist/custom-elements.json",
   "files": [
     "CHANGELOG.md",
+    "dist",
     "src",
     "!src/__tests__",
-    "!src/styles",
-    "custom-elements.json",
-    "video-background.js",
-    "video-background.js.map",
-    "video-background.min.js",
-    "video-background-controls.js",
-    "video-background-controls.js.map",
-    "video-background-controls.min.js",
-    "video-background-controls.css",
-    "video-background-controls.min.css"
+    "!src/styles"
   ],
   "homepage": "https://github.com/stamat/video-background",
   "repository": {
@@ -64,7 +56,7 @@
   },
   "scripts": {
     "dev": "poops",
-    "manifest": "cem analyze --globs src/video-background.mjs src/controls.mjs --outdir . --quiet",
+    "manifest": "cem analyze --globs src/video-background.mjs src/controls.mjs --outdir dist --quiet",
     "build": "npm run manifest && poops -b",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
     "lint": "npx eslint ."

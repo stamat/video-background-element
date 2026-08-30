@@ -26,6 +26,14 @@
   display: none;
 }
 
+// A row of bars, one per member of a <video-background-group>. The page places the row and
+// gives it its width; this is only how the bars share it.
+.seek-bars {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 8px;
+}
+
 .seek-bar-wrapper {
   position: relative;
   width: 100%;

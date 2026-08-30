@@ -29,7 +29,7 @@ script/lint      # run the linters
 ```
 
 `src/` is the source. The bundles, `video-background-controls.css` and
-`custom-elements.json` at the root are built from it and committed — CI fails when they
+`custom-elements.json` in `dist/` are built from it and committed — CI fails when they
 are stale, so `script/build` is part of every change — and `_site/` is built and ignored.
 `custom-elements.json` comes from the JSDoc on the two element classes; edit the JSDoc,
 never the JSON. `script/test` runs jest in jsdom, which has no playback and no observers:

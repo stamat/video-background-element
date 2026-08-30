@@ -66,8 +66,3 @@ body {
   width: auto;
   z-index: 2;
 }
-
-.seek-bars {
-  display: flex;
-  gap: 8px;
-}

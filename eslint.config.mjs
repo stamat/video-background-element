@@ -3,9 +3,9 @@ import globals from 'globals';
 
 export default [
   {
-    // build output: the bundles at the root and everything generated into _site/
+    // build output: everything generated into dist/ and _site/
     ignores: [
-      'video-background*.js',
+      'dist/**',
       '_site/**',
       '**/*.map',
       'node_modules/**'
