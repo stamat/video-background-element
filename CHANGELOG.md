@@ -31,7 +31,9 @@ On `script/publish`, `script/changelog` cuts this section into a released entry
 in the same commit as the version bump, and the entry becomes the body of the
 GitHub release verbatim.
 
-## [Unreleased] — `always-play` is `pause-offscreen`
+## [Unreleased]
+
+## [1.1.0] - 2026-08-30 — `always-play` is `pause-offscreen`
 
 **This is a breaking change in a minor release, deliberately.** 1.0.0 was five hours old
 when the rename landed, so the version it breaks is one nobody had time to depend on, and a

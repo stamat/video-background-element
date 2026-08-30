@@ -1,6 +1,6 @@
 {
   "name": "video-background-element",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "<video-background>: a video background from a YouTube, Vimeo or video file link, as a custom element.",
   "main": "dist/video-background.js",
   "exports": {
