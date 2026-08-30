@@ -1,6 +1,7 @@
 // Covers what has actually shipped broken here, and the element's lifecycle: URL parsing,
 // MIME and attribute resolution, time/percentage arithmetic, the loop and pause decisions,
-// the scroll-in gate, building and tearing down on `src` and on disconnect, the `<video>`
+// the scroll-in gate, building and tearing down on `src` and on disconnect, the state a
+// source swap carries over, the `<video>`
 // API the element speaks - `paused`, the setters, `readyState`, `buffered`, and the event
 // names, which are the `<video>`'s - group wrap-around, control teardown, the ARIA the controls write, and the seek bar's motion
 // between time reports.
@@ -25,6 +26,7 @@ import { Vimeo } from '../lib/vimeo.mjs'
 beforeAll(() => {
   HTMLMediaElement.prototype.play = jest.fn()
   HTMLMediaElement.prototype.pause = jest.fn()
+  HTMLMediaElement.prototype.load = jest.fn()
 })
 
 // A YouTube API that is already loaded and hands back a player with no methods, the way
@@ -489,6 +491,131 @@ describe('Vimeo background mode', () => {
     asked.onVideoPlay({ seconds: 0, duration: 42 })
     expect(asked.player.pause).not.toHaveBeenCalled()
     expect(asked.currentState).toBe('playing')
+  })
+})
+
+describe('a source swap', () => {
+  // The swap used to assign the iframe `src`, which navigates away from the document the
+  // platform API shook hands with: no more state changes, so no more loop, and the fresh
+  // embed read mute and autoplay off the URL rather than off the player.
+  const params = { autoplay: true, muted: true, loop: true, 'always-play': true, 'start-at': 5, 'end-at': 0, 'no-cookie': true }
+  const youtube = (state) => Object.assign(Object.create(YouTube.prototype), {
+    host: document.createElement('div'),
+    playerElement: document.createElement('iframe'),
+    params,
+    player: { loadVideoById: jest.fn(), cueVideoById: jest.fn() },
+    pending: null,
+    muted: false,
+    paused: false,
+    currentState: 'playing',
+    isIntersecting: true,
+    duration: 120,
+    currentTime: 60,
+    percentComplete: 50,
+    ...state
+  })
+
+  const source = { id: 'dQw4w9WgXcQ', link: 'https://youtu.be/dQw4w9WgXcQ' }
+
+  test('a playing video is handed to the player that is already unmuted, and its frame stays put', () => {
+    const provider = youtube({})
+    provider.setSource(source)
+    expect(provider.player.loadVideoById).toHaveBeenCalledWith({ videoId: 'dQw4w9WgXcQ', startSeconds: 5 })
+    expect(provider.player.cueVideoById).not.toHaveBeenCalled()
+    expect(provider.playerElement.getAttribute('src')).toBeNull()
+  })
+
+  test('a stopped video is cued, never started behind the visitor', () => {
+    const held = youtube({ paused: true })
+    held.setSource(source)
+    expect(held.player.cueVideoById).toHaveBeenCalledWith({ videoId: 'dQw4w9WgXcQ', startSeconds: 5 })
+
+    const offscreen = youtube({ currentState: 'paused', isIntersecting: false, params: { ...params, 'always-play': false } })
+    offscreen.setSource(source)
+    expect(offscreen.player.cueVideoById).toHaveBeenCalled()
+    expect(offscreen.player.loadVideoById).not.toHaveBeenCalled()
+  })
+
+  test('a video that ran out in view starts over on a swap, the way a fresh build would', () => {
+    const ended = youtube({ currentState: 'ended' })
+    ended.setSource(source)
+    expect(ended.player.loadVideoById).toHaveBeenCalled()
+    expect(ended.player.cueVideoById).not.toHaveBeenCalled()
+  })
+
+  test('the replaced video leaves no duration behind to end the new one early', () => {
+    const provider = youtube({})
+    provider.setSource(source)
+    expect(provider.duration).toBe(0)
+    expect(provider.currentTime).toBe(5)
+    expect(provider.percentComplete).toBe(0)
+  })
+
+  test('a swap before the player answers carries the live mute state into the URL', () => {
+    const loud = youtube({ player: null, pending: {} })
+    loud.setSource(source)
+    expect(loud.playerElement.src).toContain('dQw4w9WgXcQ')
+    expect(loud.playerElement.src).not.toContain('mute=1')
+
+    const quiet = youtube({ player: null, pending: {}, muted: true })
+    quiet.setSource(source)
+    expect(quiet.playerElement.src).toContain('mute=1')
+  })
+
+  test('a held pause keeps autoplay out of a swapped URL', () => {
+    const held = youtube({ player: null, pending: {}, paused: true })
+    held.setSource(source)
+    expect(held.playerElement.src).not.toContain('autoplay=1')
+  })
+
+  test('a Vimeo swap goes through the player as a url, and an unlisted link keeps its hash', async () => {
+    const provider = Object.assign(Object.create(Vimeo.prototype), {
+      host: document.createElement('div'),
+      playerElement: document.createElement('iframe'),
+      params: { autoplay: true, muted: true, loop: true, 'always-play': true, 'start-at': 0, 'end-at': 0, 'no-cookie': true },
+      player: { loadVideo: jest.fn(() => Promise.resolve()), setLoop: jest.fn(), setMuted: jest.fn(), play: jest.fn(), pause: jest.fn() },
+      muted: false, paused: false, currentState: 'playing', isIntersecting: true, duration: 42, currentTime: 10, percentComplete: 20
+    })
+
+    provider.setSource({ id: '123456789', unlisted: 'abc123def', link: 'https://vimeo.com/123456789/abc123def' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(provider.player.loadVideo).toHaveBeenCalledWith({ url: 'https://vimeo.com/123456789?h=abc123def' })
+    expect(provider.player.setLoop).toHaveBeenCalledWith(true)
+    expect(provider.player.setMuted).toHaveBeenCalledWith(false)
+    expect(provider.player.play).toHaveBeenCalled()
+    expect(provider.playerElement.getAttribute('src')).toBeNull()
+    expect(provider.duration).toBe(0)
+  })
+
+  test('a plain video file is reloaded, not just relabelled', () => {
+    const host = element('<video-background src="https://example.com/clip.mp4"></video-background>')
+    const video = host.player
+    video.load.mockClear()
+    video.play.mockClear()
+    host.provider.currentState = 'playing'
+
+    host.setSource('https://example.com/other.webm')
+
+    expect(video.load).toHaveBeenCalled()
+    expect(video.play).toHaveBeenCalled()
+    expect(video.autoplay).toBe(true)
+    expect(video.querySelector('source').getAttribute('type')).toBe('video/webm')
+  })
+
+  test('a file swapped in while stopped is loaded, not started, and load() cannot autoplay it back', () => {
+    const host = element('<video-background src="https://example.com/clip.mp4"></video-background>')
+    const video = host.player
+    video.load.mockClear()
+    video.play.mockClear()
+    expect(video.autoplay).toBe(true)
+    host.pause()
+
+    host.setSource('https://example.com/other.webm')
+
+    expect(video.load).toHaveBeenCalled()
+    expect(video.play).not.toHaveBeenCalled()
+    expect(video.autoplay).toBe(false)
   })
 })
 

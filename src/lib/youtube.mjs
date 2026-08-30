@@ -44,7 +44,7 @@ export class YouTube extends Provider {
     const site = this.params['no-cookie'] ? 'https://www.youtube-nocookie.com/embed/' : 'https://www.youtube.com/embed/';
     let src = `${site}${id}?&enablejsapi=1&disablekb=1&controls=0&rel=0&iv_load_policy=3&cc_load_policy=0&playsinline=1&showinfo=0&modestbranding=1&fs=0`;
 
-    if (this.params.muted) src += '&mute=1';
+    if (this.muted) src += '&mute=1'; // the live state, not the parameter: a swap after an unmute stays unmuted
     if (this.autoplayNow()) src += '&autoplay=1';
 
     // no &loop=1 here: the embed ignores it unless it is paired with a playlist
@@ -62,9 +62,25 @@ export class YouTube extends Provider {
     this.timeUpdateTimer = null;
   }
 
+  // A new frame `src` navigates away from the document the API shook hands with: no more
+  // state changes, so no more loop, and the fresh embed reads mute and autoplay off the
+  // URL rather than off the player. Only a swap before the player answers pays that.
   setSource(source) {
+    const start = this.startsAfterSwap();
     this.id = source.id;
-    this.playerElement.src = this.generateSrcURL(this.id);
+    this.resetProgress();
+
+    if (!this.player) {
+      this.playerElement.src = this.generateSrcURL(this.id);
+      return;
+    }
+
+    const request = { videoId: this.id, startSeconds: this.params['start-at'] || 0 };
+    if (start) {
+      this.player.loadVideoById(request);
+    } else {
+      this.player.cueVideoById(request);
+    }
   }
 
   onVideoTimeUpdate() {

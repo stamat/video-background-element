@@ -59,7 +59,27 @@ export class Provider {
   // autoplay=1 goes into the embed URL only when the video would start anyway,
   // otherwise an off-screen lazy video plays into the void until scrolled to
   autoplayNow() {
+    if (this.paused) return false; // a held pause outlives a source swap
     return this.params.autoplay && (this.params['always-play'] || this.isIntersecting);
+  }
+
+  // playback the visitor did not stop - buffering is playing that is still catching up
+  isPlaying() {
+    return !this.paused && (this.currentState === 'playing' || this.currentState === 'buffering');
+  }
+
+  // what a swapped-in video does: plays on if the old one was, starts if a fresh build
+  // would - autoplay on and in view - and waits otherwise; a held pause stops both
+  startsAfterSwap() {
+    return this.isPlaying() || this.autoplayNow();
+  }
+
+  // duration and progress describe the video being replaced, and a stale duration ends the
+  // new one early - every setSource clears them, so the new duration arrives as metadata
+  resetProgress() {
+    this.duration = 0;
+    this.currentTime = this.params['start-at'] || 0;
+    this.percentComplete = 0;
   }
 
   timeToPercentage(time) {

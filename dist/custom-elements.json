@@ -450,7 +450,7 @@
               "type": {
                 "text": "string"
               },
-              "description": "A YouTube, Vimeo or video file url. Removing it tears the player down, setting it again rebuilds; a url of the same type swaps the video in place."
+              "description": "A YouTube, Vimeo or video file url. Removing it tears the player down, setting it again rebuilds; a url of the same type swaps the video in place, keeping the player and its state - mute, volume, and whether it was playing."
             },
             {
               "name": "start-at",

@@ -131,6 +131,14 @@ names and the events take the `<video>`'s; the page markup and the calls around 
   `play()` was a no-op with nothing in the console. `YT.loaded` is now watched beside the
   hook for ten seconds after the script loads, and a load that never comes up rejects with
   a message instead of waiting forever. Same code shipped in youtube-background 1.x.
+- **A source swap keeps the state it was handed.** Swapping the video assigned the frame's
+  `src`, which navigates away from the document the YouTube and Vimeo APIs shook hands with:
+  the new video came back muted after the visitor had unmuted, and with no state changes
+  left to hear, it never looped. The swap goes through the player now — `loadVideoById`, or
+  `cueVideoById` for a video neither playing nor due to start, and Vimeo's `loadVideo` — and
+  a file is reloaded rather than relabelled, `autoplay` taken off it first when it is to
+  wait, which is what it took for one to change at all. Carried in from youtube-background
+  1.x, fixed there too.
 - **`always-play` no longer starts a video `autoplay="false"` said not to.** Coming back to
   the tab resumed anything pinned with `always-play` whether or not the visitor had ever
   pressed play; keeping a video going off-screen and starting one are different decisions,

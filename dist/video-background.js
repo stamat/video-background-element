@@ -190,7 +190,24 @@
     // autoplay=1 goes into the embed URL only when the video would start anyway,
     // otherwise an off-screen lazy video plays into the void until scrolled to
     autoplayNow() {
+      if (this.paused) return false;
       return this.params.autoplay && (this.params["always-play"] || this.isIntersecting);
+    }
+    // playback the visitor did not stop - buffering is playing that is still catching up
+    isPlaying() {
+      return !this.paused && (this.currentState === "playing" || this.currentState === "buffering");
+    }
+    // what a swapped-in video does: plays on if the old one was, starts if a fresh build
+    // would - autoplay on and in view - and waits otherwise; a held pause stops both
+    startsAfterSwap() {
+      return this.isPlaying() || this.autoplayNow();
+    }
+    // duration and progress describe the video being replaced, and a stale duration ends the
+    // new one early - every setSource clears them, so the new duration arrives as metadata
+    resetProgress() {
+      this.duration = 0;
+      this.currentTime = this.params["start-at"] || 0;
+      this.percentComplete = 0;
     }
     timeToPercentage(time) {
       if (time <= this.params["start-at"]) return 0;
@@ -382,7 +399,7 @@
     generateSrcURL(id) {
       const site = this.params["no-cookie"] ? "https://www.youtube-nocookie.com/embed/" : "https://www.youtube.com/embed/";
       let src = `${site}${id}?&enablejsapi=1&disablekb=1&controls=0&rel=0&iv_load_policy=3&cc_load_policy=0&playsinline=1&showinfo=0&modestbranding=1&fs=0`;
-      if (this.params.muted) src += "&mute=1";
+      if (this.muted) src += "&mute=1";
       if (this.autoplayNow()) src += "&autoplay=1";
       return src;
     }
@@ -394,9 +411,23 @@
       clearInterval(this.timeUpdateTimer);
       this.timeUpdateTimer = null;
     }
+    // A new frame `src` navigates away from the document the API shook hands with: no more
+    // state changes, so no more loop, and the fresh embed reads mute and autoplay off the
+    // URL rather than off the player. Only a swap before the player answers pays that.
     setSource(source) {
+      const start = this.startsAfterSwap();
       this.id = source.id;
-      this.playerElement.src = this.generateSrcURL(this.id);
+      this.resetProgress();
+      if (!this.player) {
+        this.playerElement.src = this.generateSrcURL(this.id);
+        return;
+      }
+      const request = { videoId: this.id, startSeconds: this.params["start-at"] || 0 };
+      if (start) {
+        this.player.loadVideoById(request);
+      } else {
+        this.player.cueVideoById(request);
+      }
     }
     onVideoTimeUpdate() {
       const ctime = this.player.getCurrentTime();
@@ -556,17 +587,38 @@
     generateSrcURL(id, unlisted) {
       unlisted = unlisted ? `h=${unlisted}&` : "";
       let src = `https://player.vimeo.com/video/${id}?${unlisted}background=1&controls=0`;
-      if (this.params.muted) src += "&muted=1";
+      if (this.muted) src += "&muted=1";
       if (this.autoplayNow()) src += "&autoplay=1";
       if (this.params.loop) src += "&loop=1&autopause=0";
       if (this.params["no-cookie"]) src += "&dnt=1";
       if (this.params["start-at"]) src += "#t=" + this.params["start-at"] + "s";
       return src;
     }
+    // A new frame `src` navigates away from the document player.js registered its handlers
+    // with, so 'ended' and 'timeupdate' stop arriving and the loop with them. loadVideo keeps
+    // the player; the frame swap is what is left when there is no player, or when player.js
+    // could not load the video.
     setSource(source) {
+      const start = this.startsAfterSwap();
       this.id = source.id;
       this.unlisted = source.unlisted;
-      this.playerElement.src = this.generateSrcURL(this.id, this.unlisted);
+      this.resetProgress();
+      if (!this.player) {
+        this.playerElement.src = this.generateSrcURL(this.id, this.unlisted);
+        return;
+      }
+      const url = `https://vimeo.com/${this.id}` + (this.unlisted ? `?h=${this.unlisted}` : "");
+      this.player.loadVideo({ url }).then(() => {
+        this.player.setLoop(this.params.loop);
+        this.player.setMuted(this.muted);
+        if (start) {
+          this.player.play();
+        } else {
+          this.player.pause();
+        }
+      }).catch(() => {
+        this.playerElement.src = this.generateSrcURL(this.id, this.unlisted);
+      });
     }
     onVideoPlayerReady() {
       this.mobileLowBatteryAutoplayHack();
@@ -739,6 +791,7 @@
       this.syncNativeLoop();
     }
     setSource(source) {
+      const start = this.startsAfterSwap();
       this.id = source.id;
       this.src = source.link;
       this.player.innerHTML = "";
@@ -747,6 +800,11 @@
       const mime = mimeType(this.id);
       if (mime) element.setAttribute("type", mime);
       this.player.appendChild(element);
+      if (!this.playerElement) return;
+      this.resetProgress();
+      this.player.autoplay = start;
+      this.player.load();
+      if (start) this.player.play();
     }
     onVideoLoadedMetadata() {
       this.setDuration(this.player.duration);

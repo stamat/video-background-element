@@ -48,7 +48,7 @@ export class Vimeo extends Provider {
     unlisted = unlisted ? `h=${unlisted}&` : '';
     let src = `https://player.vimeo.com/video/${id}?${unlisted}background=1&controls=0`;
 
-    if (this.params.muted) src += '&muted=1';
+    if (this.muted) src += '&muted=1'; // the live state, not the parameter: a swap after an unmute stays unmuted
     if (this.autoplayNow()) src += '&autoplay=1';
     if (this.params.loop) src += '&loop=1&autopause=0';
     if (this.params['no-cookie']) src += '&dnt=1';
@@ -59,10 +59,32 @@ export class Vimeo extends Provider {
     return src;
   }
 
+  // A new frame `src` navigates away from the document player.js registered its handlers
+  // with, so 'ended' and 'timeupdate' stop arriving and the loop with them. loadVideo keeps
+  // the player; the frame swap is what is left when there is no player, or when player.js
+  // could not load the video.
   setSource(source) {
+    const start = this.startsAfterSwap();
     this.id = source.id;
     this.unlisted = source.unlisted;
-    this.playerElement.src = this.generateSrcURL(this.id, this.unlisted);
+    this.resetProgress();
+
+    if (!this.player) {
+      this.playerElement.src = this.generateSrcURL(this.id, this.unlisted);
+      return;
+    }
+
+    // the url form: player.js takes an unlisted hash only as ?h= on a url, never beside an id
+    const url = `https://vimeo.com/${this.id}` + (this.unlisted ? `?h=${this.unlisted}` : '');
+    // 'loaded' fires again and onVideoPlayerReady with it - the seek to start-at, the
+    // autoplay and the duration come from there; this adds what a new load drops
+    this.player.loadVideo({ url }).then(() => {
+      this.player.setLoop(this.params.loop);
+      this.player.setMuted(this.muted);
+      if (start) { this.player.play(); } else { this.player.pause(); }
+    }).catch(() => {
+      this.playerElement.src = this.generateSrcURL(this.id, this.unlisted);
+    });
   }
 
   onVideoPlayerReady() {

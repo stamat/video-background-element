@@ -31,7 +31,7 @@ call, no cookies from YouTube or Vimeo unless you ask for them.
 - [Install](#install)
 - [Use](#use)
 - [Attributes](#attributes)
-- [The element is the instance](#the-element-is-the-instance) — [API](#api), [State](#state), [Events](#events)
+- [The element is the instance](#the-element-is-the-instance) — [API](#api), [State](#state), [Events](#events), [The `<video>` API](#the-video-api)
 - [Controls](#controls) — [Group](#group)
 - [The manifest](#the-manifest)
 - [Coming from youtube-background](#coming-from-youtube-background)
@@ -86,7 +86,9 @@ that box, at `z-index: 0`, with `pointer-events: none`, and the player inside it
 and sized to cover the box at the video's ratio — 16:9 unless `resolution` says otherwise —
 plus `offset` pixels of overscan that keep the platform's edge chrome out of view. If the
 box is not positioned, the element sets `position: relative` on it, because a background
-needs a containing block and there is no other way to get one.
+needs a containing block and there is no other way to get one. All of that is the
+`unstyled` attribute's to switch off, for the element in a page's flow rather than behind
+one — [The `<video>` API](#the-video-api) shows where that is wanted.
 
 Everything it needs it writes itself: one `<style>` in `<head>`, once per document, every
 rule inside `:where()` so it has no specificity and any rule of yours wins without
@@ -105,7 +107,10 @@ attribute cannot do:
 ```
 
 `src` is the whole lifecycle. Remove it and the player is torn down; set it and the player
-is built; set a url of the same type and the video is swapped in place. An element added to
+is built; set a url of the same type and the video is swapped in place, keeping the player
+and its state — mute and volume carry over, a video that was playing plays on, one that
+would start on a fresh build — `autoplay` on and in view — starts, and one the visitor
+paused stays paused. An element added to
 the page later builds itself — that is what a custom element is for, and why there is no
 `add()` and no MutationObserver to write — and an element removed from the page tears
 itself down.
@@ -386,6 +391,13 @@ page-wide `iframe { … }` rule reaches them too. The element's own rules have n
 specificity, so anything of yours wins; if something of yours breaks the player, that is
 where to look. `unstyled` takes the element's rules off it altogether, for the element in a
 page's flow rather than behind one.
+
+**Vimeo's chrome stays on a free-plan video.** Hiding it is `background=1` in the embed
+URL, and Vimeo lists `background` — like `controls` — as a parameter for owners on Starter
+and up ([player parameters](https://help.vimeo.com/hc/en-us/articles/12426260232977-Player-parameters-overview)).
+On a video whose owner is on the free plan the parameter is ignored: Vimeo's own play
+button and bar show over the picture, and no attribute here can take them off. The plan is
+the owner's, so a video you do not own is a video you cannot fix.
 
 **YouTube's play/pause bezel cannot be removed.** Every playback toggle flashes YouTube's
 own big round icon in the middle of the frame — `.ytp-bezel`, drawn by the player inside the

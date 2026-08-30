@@ -75,6 +75,7 @@ export class Video extends Provider {
   }
 
   setSource(source) {
+    const start = this.startsAfterSwap();
     this.id = source.id;
     this.src = source.link;
     this.player.innerHTML = '';
@@ -83,6 +84,16 @@ export class Video extends Provider {
     const mime = mimeType(this.id);
     if (mime) element.setAttribute('type', mime);
     this.player.appendChild(element);
+
+    // connect() calls this before mount, on an element the browser has not looked at yet -
+    // there is nothing to reload then. After that the source children are read by the load
+    // algorithm and nowhere else, so without this the old file plays on.
+    if (!this.playerElement) return;
+    this.resetProgress();
+    // load() re-arms the autoplay attribute, so a video that is to wait loses it first
+    this.player.autoplay = start;
+    this.player.load();
+    if (start) this.player.play();
   }
 
   onVideoLoadedMetadata() {

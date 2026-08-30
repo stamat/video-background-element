@@ -112,7 +112,7 @@ function cssURL(url) {
  * @summary A cover-fit video background from a YouTube, Vimeo or video file link.
  * @customElement video-background
  *
- * @attr {string} src - A YouTube, Vimeo or video file url. Removing it tears the player down, setting it again rebuilds; a url of the same type swaps the video in place.
+ * @attr {string} src - A YouTube, Vimeo or video file url. Removing it tears the player down, setting it again rebuilds; a url of the same type swaps the video in place, keeping the player and its state - mute, volume, and whether it was playing.
  * @attr {boolean} [autoplay=true] - Start as soon as the element is in view.
  * @attr {boolean} [muted=true] - Start muted - which is what lets autoplay through.
  * @attr {boolean} [loop=true] - Restart when the video ends.
