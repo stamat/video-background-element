@@ -33,6 +33,11 @@ GitHub release verbatim.
 
 ## [Unreleased] — `always-play` is `pause-offscreen`
 
+**This is a breaking change in a minor release, deliberately.** 1.0.0 was five hours old
+when the rename landed, so the version it breaks is one nobody had time to depend on, and a
+2.0.0 that close behind would say less than this entry does. 1.0.0 is deprecated on npm with
+a notice pointing here. If you did install it, the one-line fix is below.
+
 `always-play` named the exception rather than the behaviour: it read as *play always*, and
 what it actually turned off — the pause when the element scrolls out of view — had no name
 at all. Every other default-on option here is written off with `="false"`, so the odd one
@@ -44,9 +49,12 @@ out was also the one that needed a footnote.
   named after what it does and inverted to match `autoplay`, `muted`, `loop` and
   `no-cookie`: leave it alone to pause off-screen, write `pause-offscreen="false"` to keep
   playing there. As before, off it also lets an `autoplay` video *start* off-screen, and a
-  browser without `IntersectionObserver` forces it off, having no gate to run. The old name
-  is not read at all — a page setting `always-play` now pauses off-screen; the README's
-  youtube-background map has the row.
+  browser without `IntersectionObserver` forces it off, having no gate to run.
+
+  **The old name is not read at all, and nothing warns.** A page left on `always-play` gets
+  the default — it pauses off-screen — and the attribute sits there inert. Replace
+  `always-play` with `pause-offscreen="false"`; there is nothing else to change. The
+  README's youtube-background map has the row, `data-vbg-always-play` included.
 
 ## [1.0.0] - 2026-08-30 — `<video-background>`, out of youtube-background
 
