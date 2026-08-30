@@ -5,8 +5,8 @@ blank_issues_enabled: false
 
 contact_links:
   - name: Question or idea
-    url: https://github.com/stamat/video-background/discussions
+    url: https://github.com/stamat/video-background-element/discussions
     about: Anything that isn't a bug or a concrete feature. Enable Discussions first, or delete this link.
   - name: Security vulnerability
-    url: https://github.com/stamat/video-background/security/advisories/new
+    url: https://github.com/stamat/video-background-element/security/advisories/new
     about: Report it privately. Do not open a public issue.

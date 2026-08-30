@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to video-background are recorded here.
+All notable changes to video-background-element are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -54,12 +54,12 @@ names and the events take the `<video>`'s; the page markup and the calls around 
   `player` and the rest are on the element, and `event.detail` is the element.
 - **`<video-background-group>`**, replacing `VideoBackgroundGroup` and the
   `VideoBackgroundGroups` factory: the backgrounds inside it are the playlist.
-- **`video-background/controls.css`** — `video-background-controls.css` — the look of the
-  seek bar, the row `.seek-bars` lays one bar per group member out in, and the stacking a
-  group needs, optional and themed by `--seek-bar-*`.
+- **`video-background-element/controls.css`** — `video-background-controls.css` — the look
+  of the seek bar, the row `.seek-bars` lays one bar per group member out in, and the
+  stacking a group needs, optional and themed by `--seek-bar-*`.
 - **`custom-elements.json`**, generated from the JSDoc on the two element classes, as the
-  package's `customElements` key and a `video-background/custom-elements.json` export, for
-  editors and for the options panel the demo page builds from it.
+  package's `customElements` key and a `video-background-element/custom-elements.json`
+  export, for editors and for the options panel the demo page builds from it.
 - **The demo page is live.** Every sample is rendered from the code under it by
   [`<code-preview>`](https://github.com/stamat/code-preview-element) and editable in place,
   with an Options tab read from the manifest.

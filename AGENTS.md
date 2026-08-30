@@ -1,4 +1,4 @@
-# video-background — agent notes
+# video-background-element — agent notes
 
 `<video-background src>`: a cover-fit, muted, looping video background from a YouTube, Vimeo
 or video file link, as a custom element. The element is the instance.

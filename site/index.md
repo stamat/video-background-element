@@ -6,9 +6,9 @@ description: <video-background> — a video background from a YouTube, Vimeo or 
 <link rel="stylesheet" href="{{ relativePathPrefix }}code-preview.min.css">
 
 # 📺 &lt;video-background&gt;
-[![npm version](https://img.shields.io/npm/v/video-background)](https://www.npmjs.com/package/video-background)
-[![CI](https://img.shields.io/github/actions/workflow/status/stamat/video-background/ci.yml?branch=main&label=CI)](https://github.com/stamat/video-background/actions/workflows/ci.yml)
-[![gzip size](https://img.badgesize.io/stamat/video-background/main/dist/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background/blob/main/dist/video-background.js)
+[![npm version](https://img.shields.io/npm/v/video-background-element)](https://www.npmjs.com/package/video-background-element)
+[![CI](https://img.shields.io/github/actions/workflow/status/stamat/video-background-element/ci.yml?branch=main&label=CI)](https://github.com/stamat/video-background-element/actions/workflows/ci.yml)
+[![gzip size](https://img.badgesize.io/stamat/video-background-element/main/dist/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background-element/blob/main/dist/video-background.js)
 
 A video behind a hero costs more than an iframe: it has to cover the box at the video's
 own ratio, start muted so autoplay is allowed, loop, and stop when it scrolls away or the
@@ -17,11 +17,11 @@ list as one tag: put it inside the box, give it a YouTube, Vimeo or video file l
 No CSS, no init call, no cookies from the platforms by default.
 
 ```bash
-npm install video-background
+npm install video-background-element
 ```
 
 ```html
-<script src="https://unpkg.com/video-background/dist/video-background.min.js"></script>
+<script src="https://unpkg.com/video-background-element/dist/video-background.min.js"></script>
 
 <div class="hero">
   <video-background src="https://www.youtube.com/watch?v=eEpEeyqGlxA"></video-background>
@@ -36,7 +36,7 @@ controls script and stylesheet, and [`preview.css`](preview.css), which is only 
 
 > Coming from `youtube-background`? Same providers, the `[data-vbg]` factory replaced by
 > the element — the map is in the
-> [README](https://github.com/stamat/video-background#coming-from-youtube-background). That
+> [README](https://github.com/stamat/video-background-element#coming-from-youtube-background). That
 > package stays at 1.x with its own [page](https://stamat.github.io/youtube-background/).
 
 ## Live
@@ -179,9 +179,9 @@ Importing defines the element; there is nothing to call. The controls are a seco
 so a page without them does not carry them.
 
 ```javascript
-import "video-background";
-import { PlayToggle, MuteToggle, SeekBar } from "video-background/controls";
-import "video-background/controls.css"; // optional: the seek bar's look, the group's stacking
+import "video-background-element";
+import { PlayToggle, MuteToggle, SeekBar } from "video-background-element/controls";
+import "video-background-element/controls.css"; // optional: the seek bar's look, the group's stacking
 ```
 
 From a script tag the controls bundle exposes the same three as
@@ -206,7 +206,7 @@ Attributes are read when the element builds. `src` is live — remove it and the
 torn down, set it and it is rebuilt, set one of the same type and the video is swapped in
 place — and so are `start-at` and `end-at`. Anything else takes effect on the next build.
 The full attribute table, the API and the events are in the
-[README](https://github.com/stamat/video-background#readme); the Options tab on any sample
+[README](https://github.com/stamat/video-background-element#readme); the Options tab on any sample
 above is the same list, read from the manifest.
 
 ## Limits

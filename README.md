@@ -1,12 +1,12 @@
-# 📺 video-background
-[![npm version](https://img.shields.io/npm/v/video-background)](https://www.npmjs.com/package/video-background)
-[![CI](https://img.shields.io/github/actions/workflow/status/stamat/video-background/ci.yml?branch=main&label=CI)](https://github.com/stamat/video-background/actions/workflows/ci.yml)
-[![gzip size](https://img.badgesize.io/stamat/video-background/main/dist/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background/blob/main/dist/video-background.js)
+# 📺 video-background-element
+[![npm version](https://img.shields.io/npm/v/video-background-element)](https://www.npmjs.com/package/video-background-element)
+[![CI](https://img.shields.io/github/actions/workflow/status/stamat/video-background-element/ci.yml?branch=main&label=CI)](https://github.com/stamat/video-background-element/actions/workflows/ci.yml)
+[![gzip size](https://img.badgesize.io/stamat/video-background-element/main/dist/video-background.min.js?compression=gzip&label=gzip%20size)](https://github.com/stamat/video-background-element/blob/main/dist/video-background.js)
 
 > `<video-background src="…">` — a video background from a YouTube, Vimeo or video file
 > link, as one tag.
 
-[DEMO HERE ➡️](https://stamat.github.io/video-background/) — every sample on it is live
+[DEMO HERE ➡️](https://stamat.github.io/video-background-element/) — every sample on it is live
 and editable.
 
 A video behind a hero costs more than an iframe. It has to cover the box at the video's own
@@ -16,7 +16,7 @@ the tab goes idle — get one of those wrong and it plays into the void at full 
 never starts at all and nothing says why. This element is that list, done once:
 
 ```html
-<script src="https://unpkg.com/video-background/dist/video-background.min.js"></script>
+<script src="https://unpkg.com/video-background-element/dist/video-background.min.js"></script>
 
 <div class="hero">
   <video-background src="https://www.youtube.com/watch?v=eEpEeyqGlxA"></video-background>
@@ -54,24 +54,24 @@ the player half, and a plain `<video>` covers the file-only case with nothing to
 ## Install
 
 ```sh
-npm install video-background
+npm install video-background-element
 ```
 
 Importing defines the element; there is nothing to call. The controls are a second entry
 so a page without them does not carry them, and their stylesheet a third:
 
 ```javascript
-import "video-background";
-import { SeekBar, PlayToggle, MuteToggle } from "video-background/controls";
-import "video-background/controls.css"; // optional, see Controls
+import "video-background-element";
+import { SeekBar, PlayToggle, MuteToggle } from "video-background-element/controls";
+import "video-background-element/controls.css"; // optional, see Controls
 ```
 
 Or two script tags and no build step, from the package or a CDN:
 
 ```html
-<script src="https://unpkg.com/video-background/dist/video-background.min.js"></script>
-<script src="https://unpkg.com/video-background/dist/video-background-controls.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/video-background/dist/video-background-controls.min.css">
+<script src="https://unpkg.com/video-background-element/dist/video-background.min.js"></script>
+<script src="https://unpkg.com/video-background-element/dist/video-background-controls.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/video-background-element/dist/video-background-controls.min.css">
 ```
 
 The bundles are IIFEs built for ES2019. The first defines `<video-background>` and
@@ -271,7 +271,7 @@ background by `data-target`; it wires the markup and never styles it.
 ```
 
 ```javascript
-import { SeekBar, PlayToggle, MuteToggle } from "video-background/controls";
+import { SeekBar, PlayToggle, MuteToggle } from "video-background-element/controls";
 
 new SeekBar(document.querySelector(".seek-bar-wrapper"));
 new PlayToggle(document.querySelector("button:nth-of-type(1)"));
@@ -297,7 +297,7 @@ for as long as that element lives, so a page that re-renders its controls — a 
 live editor — calls `destroy()` on the old ones before making new ones, or every seek bar
 ever made keeps updating on each tick.
 
-`video-background/controls.css` is the look of the seek bar — the `<progress>` under a
+`video-background-element/controls.css` is the look of the seek bar — the `<progress>` under a
 transparent range, the thumb that appears on hover — the row `.seek-bars` lays a bar per
 group member out in, and the stacking a group needs. It is optional: the classes work
 without it, and the `.seek-bars`, `.seek-bar-wrapper`, `.seek-bar-progress` and `.seek-bar`
@@ -335,7 +335,7 @@ the markup by then, or the group inserted whole.
 ## The manifest
 
 `custom-elements.json` ships in the package, as the `customElements` key and as the
-`video-background/custom-elements.json` export — a
+`video-background-element/custom-elements.json` export — a
 [Custom Elements Manifest](https://github.com/webcomponents/custom-elements-manifest)
 generated from the JSDoc on the two element classes. An editor that reads one gets
 completion for the attributes; the demo page feeds it to
@@ -367,7 +367,7 @@ events take the `<video>`'s. That package stays published at 1.x and keeps its o
 | `jQuery("[data-vbg]").youtube_background()` | gone |
 | `jquery.youtube-background.js` | `video-background.js` |
 | `youtube-background-experimental.js`, `window.SeekBar` | `video-background-controls.js`, `VideoBackgroundControls.SeekBar` |
-| `youtube-background` on npm | `video-background` on npm |
+| `youtube-background` on npm | `video-background-element` on npm |
 | `new VideoBackgroundGroup(el)`, `VideoBackgroundGroups` | `<video-background-group>` |
 | `instance.element` | the element |
 | `video-background-ready` | `loadedmetadata` — once the duration is known, not once the API answers |

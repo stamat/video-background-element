@@ -1,4 +1,4 @@
-# Contributing to video-background
+# Contributing to video-background-element
 
 Issues and pull requests are welcome. Taking part means keeping to the
 [Code of Conduct](CODE_OF_CONDUCT.md).
@@ -16,8 +16,8 @@ belongs in [media-elements](https://github.com/muxinc/media-elements).
 ## Getting set up
 
 ```bash
-git clone https://github.com/stamat/video-background.git
-cd video-background
+git clone https://github.com/stamat/video-background-element.git
+cd video-background-element
 script/bootstrap
 ```
 
