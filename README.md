@@ -27,6 +27,10 @@ never starts at all and nothing says why. This element is that list, done once:
 The element fills whatever it sits in and sits under its siblings. No CSS to write, no init
 call, no cookies from YouTube or Vimeo unless you ask for them.
 
+Its predecessor is [youtube-background](https://github.com/stamat/youtube-background): the
+same providers behind a `[data-vbg]` factory a page had to call in the right order.
+[The map](#coming-from-youtube-background) below has every rename.
+
 - [What it is not](#what-it-is-not)
 - [Install](#install)
 - [Use](#use)
@@ -348,9 +352,11 @@ agree; the manifest is never edited by hand.
 This is [youtube-background](https://github.com/stamat/youtube-background) continued under a
 name that admits it plays Vimeo and files too: the same providers, the `[data-vbg]` factory
 replaced by the element. The page markup changes, the options keep their names, and the
-events take the `<video>`'s. That package stays published at 1.x and keeps its own README and
-[demo](https://stamat.github.io/youtube-background/); nothing there breaks. The
-[changelog](CHANGELOG.md) has every change with its reason; this is the map.
+events take the `<video>`'s. That package stays maintained for the `[data-vbg]` API — 2.0
+dropped the jQuery plugin and moved its bundles into `dist/` — and keeps its own README and
+[demo](https://stamat.github.io/youtube-background/); nothing there breaks. New features land
+here. The [changelog](CHANGELOG.md) has every change with its reason; this is the map, against
+youtube-background 2.0.
 
 | youtube-background | video-background |
 | --- | --- |
@@ -364,9 +370,10 @@ events take the `<video>`'s. That package stays published at 1.x and keeps its o
 | `play-button`, `mute-button`, `pause`, and their Font Awesome markup | gone — `PlayToggle` and `MuteToggle` over a button of yours |
 | `inline-styles` | gone — the element's styles are a `:where()` stylesheet you override without `!important` |
 | `data-ytbg`, `data-youtube`, `data-ytbg-*` | gone — `src` and the attribute names |
-| `jQuery("[data-vbg]").youtube_background()` | gone |
-| `jquery.youtube-background.js` | `video-background.js` |
-| `youtube-background-experimental.js`, `window.SeekBar` | `video-background-controls.js`, `VideoBackgroundControls.SeekBar` |
+| `jQuery("[data-vbg]").youtube_background()`, gone in youtube-background 2.0 | gone |
+| `dist/youtube-background.js` — `jquery.youtube-background.js` before 2.0 | `video-background.js` |
+| `dist/youtube-background-controls.js` — `youtube-background-experimental.js` before 2.0 — and `window.SeekBar` | `video-background-controls.js`, `VideoBackgroundControls.SeekBar` |
+| `youtube-background/controls.css` | `video-background-element/controls.css` |
 | `youtube-background` on npm | `video-background-element` on npm |
 | `new VideoBackgroundGroup(el)`, `VideoBackgroundGroups` | `<video-background-group>` |
 | `instance.element` | the element |

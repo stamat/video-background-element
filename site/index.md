@@ -34,10 +34,12 @@ box is not positioned the element positions it. The frames below load that scrip
 controls script and stylesheet, and [`preview.css`](preview.css), which is only the
 `.hero` box and the look of the buttons; nothing in it is needed by the element.
 
-> Coming from `youtube-background`? Same providers, the `[data-vbg]` factory replaced by
-> the element — the map is in the
-> [README](https://github.com/stamat/video-background-element#coming-from-youtube-background). That
-> package stays at 1.x with its own [page](https://stamat.github.io/youtube-background/).
+> This element's predecessor is
+> [youtube-background](https://github.com/stamat/youtube-background) — the same providers
+> behind a `[data-vbg]` factory a page had to call. It stays maintained for that API and
+> keeps its own [page](https://stamat.github.io/youtube-background/); new features land here.
+> The map from its options to these attributes is in the
+> [README](https://github.com/stamat/video-background-element#coming-from-youtube-background).
 
 ## Live
 
