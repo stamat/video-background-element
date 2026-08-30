@@ -1,4 +1,4 @@
-/* video-background v0.0.0 | https://github.com/stamat/video-background | MIT License */
+/* video-background v1.0.0 | https://github.com/stamat/video-background | MIT License */
 (() => {
   // node_modules/book-of-spells/src/helpers.mjs
   var objProto = Object.prototype;
