@@ -1,4 +1,4 @@
-/* video-background-element v1.0.0 | https://github.com/stamat/video-background-element | MIT License */
+/* video-background-element v1.1.0 | https://github.com/stamat/video-background-element | MIT License */
 var VideoBackgroundControls = (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
