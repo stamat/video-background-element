@@ -31,13 +31,17 @@
   },
   "keywords": [
     "video-background",
+    "background-video",
+    "video",
     "youtube",
     "vimeo",
     "background",
-    "custom-element",
-    "web-component",
+    "hero",
     "embed",
-    "hero"
+    "autoplay",
+    "html5-video",
+    "custom-element",
+    "web-component"
   ],
   "author": "Nikola Stamatovic <@stamat>",
   "license": "MIT",
