@@ -36,6 +36,7 @@ export const DEFAULTS = {
   'start-at': 0,
   'end-at': 0,
   'volume': 1,
+  'playback-rate': 1,
   'poster': null,
   'load-background': false,
   'resolution': '16:9',
@@ -100,9 +101,9 @@ function cssURL(url) {
  * instance - its playback API and state live on it, and its events are dispatched on it.
  *
  * It speaks the `<video>` API: `paused`, `currentTime`, `duration`, `volume`, `muted`,
- * `readyState`, `buffered`, `play()`, `pause()`, and the `<video>` event names -
- * non-bubbling, like a `<video>`'s - so a media chrome that drives a `<video>` drives this.
- * Not `controls`, `seekable`, `textTracks` or `playbackRate`, and nothing with the script
+ * `playbackRate`, `readyState`, `buffered`, `play()`, `pause()`, and the `<video>` event
+ * names - non-bubbling, like a `<video>`'s - so a media chrome that drives a `<video>`
+ * drives this. Not `controls`, `seekable` or `textTracks`, and nothing with the script
  * blocked.
  *
  * Options are read from attributes when the element builds, which is when it connects with
@@ -121,6 +122,7 @@ function cssURL(url) {
  * @attr {number} [start-at=0] - Seconds to start from.
  * @attr {number} [end-at=0] - Seconds to stop at, `0` for the full duration.
  * @attr {number} [volume=1] - `0` to `1`, applied on the first unmute.
+ * @attr {number} [playback-rate=1] - Playback speed, applied when the player is built. `0.25` to `2` is what all three take; YouTube rounds an unsupported rate toward `1`, Vimeo lists the feature as PRO and Business only, and anything that is not a positive number is normal speed.
  * @attr {string} poster - Image url shown behind the player until the first frame.
  * @attr {boolean} [load-background=false] - Use the platform's own thumbnail as the poster. YouTube and Vimeo only.
  * @attr {string} [resolution=16:9] - Aspect ratio the player is sized by to cover the box.
@@ -141,6 +143,7 @@ function cssURL(url) {
  * @fires timeupdate - The position advanced while playing, about four times a second.
  * @fires seeked - The position moved, through `seek`, `seekTo`, `currentTime` or a seek bar.
  * @fires volumechange - `volume` or `muted` changed.
+ * @fires ratechange - `playbackRate` changed, once for the rate that was asked for and again if the player answered with another one.
  * @fires ended - The video reached its end, or `end-at`. With `loop` on it restarts right after.
  * @fires emptied - The player was torn down: `src` removed, or the element disconnected.
  */
@@ -293,6 +296,9 @@ export class VideoBackground extends HTMLElement {
   /** @type {number} `0` to `1`, assignable - the same as `setVolume` */
   get volume() { return this.provider ? this.provider.volume : 0; }
   set volume(value) { this.setVolume(value); }
+  /** @type {number} Playback speed the player confirmed, assignable - the same as `setPlaybackRate` */
+  get playbackRate() { return this.provider ? this.provider.playbackRate : 1; }
+  set playbackRate(value) { this.setPlaybackRate(value); }
   /** @type {string} `notstarted`, `playing`, `paused`, `buffering` or `ended` */
   get currentState() { return this.provider ? this.provider.currentState : 'notstarted'; }
   /** @type {number} Seconds, assignable - the same as `seekTo` */
@@ -323,6 +329,10 @@ export class VideoBackground extends HTMLElement {
   getVolume() { if (this.provider) return this.provider.getVolume(); }
   /** @param {number} volume `0` to `1` */
   setVolume(volume) { if (this.provider) this.provider.setVolume(volume); }
+  /** @returns {number | Promise<number> | undefined} The player's own rate; a promise on Vimeo */
+  getPlaybackRate() { if (this.provider) return this.provider.getPlaybackRate(); }
+  /** @param {number} rate `0.25` to `2`; YouTube rounds toward `1`, and Vimeo lists the feature as PRO and Business only. A rate that is not a positive number is ignored - a `<select>` with nothing chosen must never reach a player */
+  setPlaybackRate(rate) { if (this.provider && Number.isFinite(rate) && rate > 0) this.provider.setPlaybackRate(rate); }
   /** @param {number} percentage `0` to `100` */
   seek(percentage) { if (this.provider) this.provider.seek(percentage); }
   /** @param {number} seconds */

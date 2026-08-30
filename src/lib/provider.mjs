@@ -25,6 +25,14 @@ export class Provider {
     this.volume = this.params.volume;
     this.currentState = 'notstarted';
 
+    // A rate that is not a positive number is normal speed - an unreadable attribute must
+    // never reach a player that throws on it. `playbackRate` is the rate the player
+    // confirmed, so it starts at normal speed whatever was asked for, and the request is
+    // applied once the player is up.
+    const rate = Number(this.params['playback-rate']);
+    this.params['playback-rate'] = Number.isFinite(rate) && rate > 0 ? rate : 1;
+    this.playbackRate = 1;
+
     this.initialPlay = false;
     this.initialVolume = false;
 
@@ -121,6 +129,16 @@ export class Provider {
     this.duration = capped;
     this.emit('durationchange');
     if (first) this.emit('loadedmetadata');
+  }
+
+  // The rate the player answered with, not the one that was asked for: YouTube rounds an
+  // unsupported rate toward 1, and Vimeo lists the feature as PRO and Business only, so
+  // every source type routes its own rate-change event here and a correction is a second
+  // `ratechange`.
+  onRateChange(rate) {
+    if (rate === this.playbackRate) return;
+    this.playbackRate = rate;
+    this.emit('ratechange');
   }
 
   setStartAt(startAt) {

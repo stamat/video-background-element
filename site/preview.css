@@ -1,7 +1,7 @@
 /* Loaded into every <code-preview> frame on the demo page and nowhere else, after the
    package's own video-background-controls.css: the box a sample's background fills and
-   the look of the sample's buttons. Nothing here is required by the element - it
-   positions itself and sizes its player. */
+   the look of the sample's buttons and speed select. Nothing here is required by the
+   element - it positions itself and sizes its player. */
 
 body {
   margin: 0;
@@ -36,25 +36,47 @@ body {
   font-size: clamp(1.5rem, 5vw, 2.5rem);
 }
 
-.hero button {
+.hero button,
+.hero select {
   font: inherit;
   font-size: 0.875rem;
   color: #fff;
-  background: rgba(0, 0, 0, 0.45);
+  background-color: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 999px;
   padding: 0.4rem 0.9rem;
   margin: 0.25rem 0.15rem;
+  vertical-align: middle;
   cursor: pointer;
 }
 
-.hero button:hover {
-  background: rgba(0, 0, 0, 0.7);
+.hero button:hover,
+.hero select:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* The browser's own arrow is drawn against the pill's rounded edge, and how much of the
+   right padding it takes is the browser's business, not the page's - so the caret is ours,
+   set in from the border by the padding cut for it. */
+.hero select {
+  appearance: none;
+  padding-right: 1.9rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 10px 6px;
 }
 
 .hero button[aria-pressed="true"] {
   background: rgba(255, 255, 255, 0.85);
   color: #111;
+}
+
+/* The dropdown itself is drawn by the browser, and several of them paint the options in
+   the select's own colours: white on translucent black is an unreadable list. */
+.hero select option {
+  color: #111;
+  background: #fff;
 }
 
 .hero > .seek-bar-wrapper,

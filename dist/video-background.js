@@ -163,6 +163,9 @@
       this.muted = this.params.muted;
       this.volume = this.params.volume;
       this.currentState = "notstarted";
+      const rate = Number(this.params["playback-rate"]);
+      this.params["playback-rate"] = Number.isFinite(rate) && rate > 0 ? rate : 1;
+      this.playbackRate = 1;
       this.initialPlay = false;
       this.initialVolume = false;
       this.currentTime = this.params["start-at"] || 0;
@@ -244,6 +247,15 @@
       this.duration = capped;
       this.emit("durationchange");
       if (first) this.emit("loadedmetadata");
+    }
+    // The rate the player answered with, not the one that was asked for: YouTube rounds an
+    // unsupported rate toward 1, and Vimeo lists the feature as PRO and Business only, so
+    // every source type routes its own rate-change event here and a correction is a second
+    // `ratechange`.
+    onRateChange(rate) {
+      if (rate === this.playbackRate) return;
+      this.playbackRate = rate;
+      this.emit("ratechange");
     }
     setStartAt(startAt) {
       this.params["start-at"] = startAt;
@@ -392,7 +404,8 @@
       this.pending = new YT.Player(this.playerElement, {
         events: {
           "onReady": this.onVideoPlayerReady.bind(this),
-          "onStateChange": this.onVideoStateChange.bind(this)
+          "onStateChange": this.onVideoStateChange.bind(this),
+          "onPlaybackRateChange": (event) => this.onRateChange(event.data)
         }
       });
     }
@@ -447,6 +460,7 @@
       this.player = event.target;
       this.pending = null;
       if (this.volume !== 1 && !this.muted) this.setVolume(this.volume);
+      if (this.params["playback-rate"] !== 1) this.setPlaybackRate(this.params["playback-rate"]);
       this.mobileLowBatteryAutoplayHack();
       if (this.autoplayNow()) {
         if (this.params["start-at"]) this.seekTo(this.params["start-at"]);
@@ -551,6 +565,18 @@
       this.player.setVolume(volume * 100);
       this.emit("volumechange");
     }
+    getPlaybackRate() {
+      if (!this.player) return;
+      return this.player.getPlaybackRate();
+    }
+    // a suggestion: an unsupported rate is rounded toward 1, and onPlaybackRateChange is
+    // what says which rate the video ended up playing at
+    setPlaybackRate(rate) {
+      if (!this.player) return;
+      this.playbackRate = rate;
+      this.player.setPlaybackRate(rate);
+      this.emit("ratechange");
+    }
   };
 
   // src/lib/vimeo.mjs
@@ -582,7 +608,9 @@
       this.player.on("pause", this.onVideoPause.bind(this));
       this.player.on("bufferstart", this.onVideoBuffering.bind(this));
       this.player.on("timeupdate", this.onVideoTimeUpdate.bind(this));
+      this.player.on("playbackratechange", ({ playbackRate }) => this.onRateChange(playbackRate));
       if (this.volume !== 1 && !this.muted) this.setVolume(this.volume);
+      if (this.params["playback-rate"] !== 1) this.setPlaybackRate(this.params["playback-rate"]);
     }
     generateSrcURL(id, unlisted) {
       unlisted = unlisted ? `h=${unlisted}&` : "";
@@ -725,6 +753,20 @@
       this.player.setVolume(volume);
       this.emit("volumechange");
     }
+    // a promise, the player reports asynchronously
+    getPlaybackRate() {
+      if (!this.player) return;
+      return this.player.getPlaybackRate();
+    }
+    // Listed as a PRO and Business feature, and asynchronous either way, so the rate is taken
+    // from the promise resolving with what the player took rather than from the call -
+    // `playbackRate` never claims a speed the video is not playing at, and a rejection is
+    // warned rather than swallowed. The promise answers as well as the event, since nothing
+    // here can prove the event fires for a rate the API set.
+    setPlaybackRate(rate) {
+      if (!this.player) return;
+      this.player.setPlaybackRate(rate).then((playbackRate) => this.onRateChange(playbackRate)).catch((error) => console.warn(`video-background: ${error.message}`));
+    }
   };
 
   // src/lib/video.mjs
@@ -763,6 +805,7 @@
       this.player = video;
       this.syncNativeLoop();
       if (this.volume !== 1 && !this.muted) this.setVolume(this.volume);
+      if (this.params["playback-rate"] !== 1) this.setPlaybackRate(this.params["playback-rate"]);
       video.addEventListener("loadedmetadata", this.onVideoLoadedMetadata.bind(this));
       video.addEventListener("durationchange", this.onVideoLoadedMetadata.bind(this));
       video.addEventListener("canplay", this.onVideoLoadedMetadata.bind(this));
@@ -770,6 +813,7 @@
       video.addEventListener("play", this.onVideoPlay.bind(this));
       video.addEventListener("pause", this.onVideoPause.bind(this));
       video.addEventListener("waiting", this.onVideoBuffering.bind(this));
+      video.addEventListener("ratechange", () => this.onRateChange(video.playbackRate));
       video.addEventListener("ended", this.onVideoEnded.bind(this));
       this.setSource({ id: this.id, link: this.src });
       this.mount(video);
@@ -906,6 +950,16 @@
       this.player.volume = volume;
       this.emit("volumechange");
     }
+    getPlaybackRate() {
+      if (!this.player) return;
+      return this.player.playbackRate;
+    }
+    setPlaybackRate(rate) {
+      if (!this.player) return;
+      this.playbackRate = rate;
+      this.player.playbackRate = rate;
+      this.emit("ratechange");
+    }
     // a <video> has no API object to destroy, removing it is the teardown
     destroy() {
       this.player = null;
@@ -941,6 +995,7 @@
     "start-at": 0,
     "end-at": 0,
     "volume": 1,
+    "playback-rate": 1,
     "poster": null,
     "load-background": false,
     "resolution": "16:9",
@@ -1122,6 +1177,13 @@
     set volume(value) {
       this.setVolume(value);
     }
+    /** @type {number} Playback speed the player confirmed, assignable - the same as `setPlaybackRate` */
+    get playbackRate() {
+      return this.provider ? this.provider.playbackRate : 1;
+    }
+    set playbackRate(value) {
+      this.setPlaybackRate(value);
+    }
     /** @type {string} `notstarted`, `playing`, `paused`, `buffering` or `ended` */
     get currentState() {
       return this.provider ? this.provider.currentState : "notstarted";
@@ -1181,6 +1243,14 @@
     /** @param {number} volume `0` to `1` */
     setVolume(volume) {
       if (this.provider) this.provider.setVolume(volume);
+    }
+    /** @returns {number | Promise<number> | undefined} The player's own rate; a promise on Vimeo */
+    getPlaybackRate() {
+      if (this.provider) return this.provider.getPlaybackRate();
+    }
+    /** @param {number} rate `0.25` to `2`; YouTube rounds toward `1`, and Vimeo lists the feature as PRO and Business only. A rate that is not a positive number is ignored - a `<select>` with nothing chosen must never reach a player */
+    setPlaybackRate(rate) {
+      if (this.provider && Number.isFinite(rate) && rate > 0) this.provider.setPlaybackRate(rate);
     }
     /** @param {number} percentage `0` to `100` */
     seek(percentage2) {

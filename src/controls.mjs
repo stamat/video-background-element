@@ -246,6 +246,44 @@ export class MuteToggle {
   }
 }
 
+// Options are the author's: this reads the values already in the markup and never writes
+// one, so the speeds a page offers stay the speeds it wrote.
+export class RateSelect {
+  constructor(element, target) {
+    if (!element) return;
+    this.element = element;
+    this.target = resolveTarget(element, target);
+    if (!this.target) return;
+    nameInput(element, 'Playback rate');
+
+    this.listeners = [
+      [this.target, 'ratechange', this.onRateChange.bind(this)],
+      [this.target, 'emptied', this.onRateChange.bind(this)],
+      [this.element, 'change', this.onChange.bind(this)]
+    ];
+    attach(this.listeners);
+    // the rate now, for a control made after the player was already up
+    this.onRateChange();
+  }
+
+  destroy() {
+    if (!this.listeners) return;
+    detach(this.listeners);
+    this.listeners = null;
+  }
+
+  // The rate the player answered with, which is not always the rate that was asked for -
+  // YouTube rounds one it does not have. A rate no option carries selects nothing rather
+  // than naming a speed the video is not playing at.
+  onRateChange() {
+    this.element.value = String(this.target.playbackRate);
+  }
+
+  onChange() {
+    this.target.setPlaybackRate(parseFloat(this.element.value));
+  }
+}
+
 /**
  * Plays the `<video-background>` elements inside it as one playlist: one shown at a time,
  * stepping to the next when the current one ends. Only `display` is toggled between the

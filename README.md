@@ -66,7 +66,7 @@ so a page without them does not carry them, and their stylesheet a third:
 
 ```javascript
 import "video-background-element";
-import { SeekBar, PlayToggle, MuteToggle } from "video-background-element/controls";
+import { SeekBar, PlayToggle, MuteToggle, RateSelect } from "video-background-element/controls";
 import "video-background-element/controls.css"; // optional, see Controls
 ```
 
@@ -80,7 +80,7 @@ Or two script tags and no build step, from the package or a CDN:
 
 The bundles are IIFEs built for ES2019. The first defines `<video-background>` and
 exposes nothing else — the class is `customElements.get("video-background")`. The second
-defines `<video-background-group>` and puts the three control classes on
+defines `<video-background-group>` and puts the four control classes on
 `window.VideoBackgroundControls`.
 
 ## Use
@@ -140,6 +140,7 @@ bare way to write a false one.
 | `start-at` | `0` | Seconds to start from |
 | `end-at` | `0` | Seconds to stop at, `0` for the full duration |
 | `volume` | `1` | `0` to `1`, applied on the first unmute. Mobile browsers ignore it |
+| `playback-rate` | `1` | Playback speed, applied when the player is built. `0.25` to `2` is what all three take; anything that is not a positive number is normal speed |
 | `poster` | — | Image url shown behind the player until the first frame |
 | `load-background` | `false` | Use the platform's own thumbnail as the poster. YouTube and Vimeo only |
 | `resolution` | `16:9` | Aspect ratio the player is sized by to cover the box |
@@ -178,6 +179,8 @@ document.querySelectorAll("video-background").forEach((element) => element.pause
 | `mute()` / `unmute()` | — | Sound off, sound on |
 | `setVolume(volume)` | `0`–`1` | Set the volume |
 | `getVolume()` | — | The volume — a promise on Vimeo, which reports asynchronously |
+| `setPlaybackRate(rate)` | `0.25`–`2` | Set the playback speed |
+| `getPlaybackRate()` | — | The player's own rate — a promise on Vimeo |
 | `seek(percentage)` | `0`–`100` | Seek within `start-at`..`end-at` |
 | `seekTo(seconds)` | seconds | Seek to a time |
 | `setSource(url)` | url | The same as setting `src` |
@@ -203,6 +206,7 @@ touch device — the methods are no-ops and the state below is at rest. Nothing 
 | `paused` | `true` unless playing or buffering — what it means on a `<video>`, not whether a pause is held |
 | `muted` | Assignable |
 | `volume` | `0`–`1`, assignable |
+| `playbackRate` | The speed the player confirmed, assignable |
 | `readyState` | `0` until the duration is known, `1` after — the `<video>` scale, stopping at metadata |
 | `buffered` | A `TimeRanges`-shaped list: the `<video>`'s own for a file, YouTube's loaded fraction as one range, empty on Vimeo |
 | `isIntersecting` | Whether the element is in the viewport |
@@ -223,22 +227,32 @@ bubble; `event.target` is the element:
 | `seeked` | The position moved, through `seek`, `seekTo`, `currentTime` or a seek bar |
 | `timeupdate` | The position advanced while playing — about four times a second |
 | `volumechange` | `volume` or `muted` changed |
+| `ratechange` | `playbackRate` changed — once for the rate that was asked for, again if the player answered with another one |
 | `emptied` | The player was torn down: `src` removed, or the element disconnected |
 
 ### The `<video>` API
 
 Those events, `play()`, `pause()`, and `paused`, `currentTime`, `duration`, `volume`,
-`muted`, `readyState` and `buffered` above are the `<video>`'s surface, so anything that
-drives a media element by its standard names — a media chrome, a player element, your own
+`muted`, `playbackRate`, `readyState` and `buffered` above are the `<video>`'s surface, so
+anything that drives a media element by its standard names — a media chrome, a player element, your own
 code written once for both — drives this one. A background stays a background: no chrome
 grows here, and `autoplay`, `muted`, `loop` and the scroll gate keep their defaults until
 you turn them off.
 
 Not spoken, and worth knowing before you lean on it: `controls` — the platform chrome is
-always off, and an assignment lands as a plain property; `seekable`, `textTracks`,
-`playbackRate`, `error` — nothing here reports them; and nothing at all with the script
-blocked, because the element builds the player. That last one is the difference from a
-`<video>` you wrote yourself.
+always off, and an assignment lands as a plain property; `seekable`, `textTracks`, `error`
+— nothing here reports them; and nothing at all with the script blocked, because the
+element builds the player. That last one is the difference from a `<video>` you wrote
+yourself.
+
+`playbackRate` is spoken by all three, and only a file plays every rate it is given.
+YouTube rounds an unsupported one toward `1`. Vimeo's
+[`setPlaybackRate`](https://github.com/vimeo/player.js#setplaybackrateplaybackrate-number-promisenumber-rangeerrorerror)
+is listed as available to PRO and Business accounts, and its docs do not say what a video
+outside one does with the call — a refusal comes back as a rejected promise, which lands on
+the console as `video-background: …` rather than changing the speed. So `playbackRate`
+follows the player rather than the call: a rate the platform corrected arrives as a second
+`ratechange`, and the property moves with it.
 
 A player over it, with [media-player](https://github.com/stamat/media-player), is the
 attributes that turn the background off, and its class marking the media:
@@ -272,14 +286,20 @@ background by `data-target`; it wires the markup and never styles it.
 </div>
 <button data-target="#hero">Play</button>
 <button data-target="#hero">Mute</button>
+<select data-target="#hero" aria-label="Speed">
+  <option value="0.5">0.5×</option>
+  <option value="1">1×</option>
+  <option value="2">2×</option>
+</select>
 ```
 
 ```javascript
-import { SeekBar, PlayToggle, MuteToggle } from "video-background-element/controls";
+import { SeekBar, PlayToggle, MuteToggle, RateSelect } from "video-background-element/controls";
 
 new SeekBar(document.querySelector(".seek-bar-wrapper"));
 new PlayToggle(document.querySelector("button:nth-of-type(1)"));
 new MuteToggle(document.querySelector("button:nth-of-type(2)"));
+new RateSelect(document.querySelector("select"));
 ```
 
 | Class | Markup it expects | What it does |
@@ -287,6 +307,12 @@ new MuteToggle(document.querySelector("button:nth-of-type(2)"));
 | `SeekBar` | A wrapper with an `<input type="range">` from 0 to 100 marked `.js-seek-bar`, and optionally a `<progress>` marked `.js-seek-bar-progress` for the played fill | Moves on an animation frame while the video plays — providers report time about four times a second, which is visibly steppy — seeks on `change`, and names the input `Seek` if you gave it no name |
 | `PlayToggle` | A `<button>` | Writes `aria-pressed`, `true` while playing or buffering, and `type="button"` if you gave it none; a click plays or pauses |
 | `MuteToggle` | A `<button>` | Writes `aria-pressed`, `true` while muted, and `type="button"` if you gave it none; a click mutes or unmutes |
+| `RateSelect` | A `<select>` whose options carry the speeds as their values | Sets the rate on `change`, follows `ratechange` back, and names the select `Playback rate` if you gave it no name. The options are yours: it reads them and never writes one |
+
+`RateSelect` shows the speed the player answered with rather than the one that was asked
+for, so a rate none of your options carries — YouTube rounding `1.75` to `1.5` — leaves the
+select with nothing chosen instead of naming a speed the video is not playing at. Give it
+`0.5`, `1` and `2` and that cannot happen: all three are rates every source plays.
 
 The toggles are [toggle buttons](https://www.w3.org/WAI/ARIA/apg/patterns/button/): the
 name you give one never changes, and `aria-pressed` is the state. Pressed means what the

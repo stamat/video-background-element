@@ -41,6 +41,7 @@ export class Video extends Provider {
     this.syncNativeLoop();
 
     if (this.volume !== 1 && !this.muted) this.setVolume(this.volume);
+    if (this.params['playback-rate'] !== 1) this.setPlaybackRate(this.params['playback-rate']);
 
     video.addEventListener('loadedmetadata', this.onVideoLoadedMetadata.bind(this));
     video.addEventListener('durationchange', this.onVideoLoadedMetadata.bind(this));
@@ -49,6 +50,7 @@ export class Video extends Provider {
     video.addEventListener('play', this.onVideoPlay.bind(this));
     video.addEventListener('pause', this.onVideoPause.bind(this));
     video.addEventListener('waiting', this.onVideoBuffering.bind(this));
+    video.addEventListener('ratechange', () => this.onRateChange(video.playbackRate));
     video.addEventListener('ended', this.onVideoEnded.bind(this));
 
     this.setSource({ id: this.id, link: this.src });
@@ -220,6 +222,18 @@ export class Video extends Provider {
     this.volume = volume;
     this.player.volume = volume;
     this.emit('volumechange');
+  }
+
+  getPlaybackRate() {
+    if (!this.player) return;
+    return this.player.playbackRate;
+  }
+
+  setPlaybackRate(rate) {
+    if (!this.player) return;
+    this.playbackRate = rate;
+    this.player.playbackRate = rate;
+    this.emit('ratechange');
   }
 
   // a <video> has no API object to destroy, removing it is the teardown

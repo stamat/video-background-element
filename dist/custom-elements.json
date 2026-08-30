@@ -21,7 +21,7 @@
           "type": {
             "text": "object"
           },
-          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'pause-offscreen': true, 'start-at': 0, 'end-at': 0, 'volume': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background', 'unstyled': false }"
+          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'pause-offscreen': true, 'start-at': 0, 'end-at': 0, 'volume': 1, 'playback-rate': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background', 'unstyled': false }"
         },
         {
           "kind": "function",
@@ -38,7 +38,7 @@
         },
         {
           "kind": "class",
-          "description": "A video background from a YouTube, Vimeo or video file link: a cover-fit, muted,\nlooping player behind the element's parent, paused while off-screen. The element is the\ninstance - its playback API and state live on it, and its events are dispatched on it.\n\nIt speaks the `<video>` API: `paused`, `currentTime`, `duration`, `volume`, `muted`,\n`readyState`, `buffered`, `play()`, `pause()`, and the `<video>` event names -\nnon-bubbling, like a `<video>`'s - so a media chrome that drives a `<video>` drives this.\nNot `controls`, `seekable`, `textTracks` or `playbackRate`, and nothing with the script\nblocked.\n\nOptions are read from attributes when the element builds, which is when it connects with\na `src`. Only `src`, `start-at` and `end-at` are watched afterwards; the rest take effect\non the next build, which removing and re-adding `src` forces.",
+          "description": "A video background from a YouTube, Vimeo or video file link: a cover-fit, muted,\nlooping player behind the element's parent, paused while off-screen. The element is the\ninstance - its playback API and state live on it, and its events are dispatched on it.\n\nIt speaks the `<video>` API: `paused`, `currentTime`, `duration`, `volume`, `muted`,\n`playbackRate`, `readyState`, `buffered`, `play()`, `pause()`, and the `<video>` event\nnames - non-bubbling, like a `<video>`'s - so a media chrome that drives a `<video>`\ndrives this. Not `controls`, `seekable` or `textTracks`, and nothing with the script\nblocked.\n\nOptions are read from attributes when the element builds, which is when it connects with\na `src`. Only `src`, `start-at` and `end-at` are watched afterwards; the rest take effect\non the next build, which removing and re-adding `src` forces.",
           "name": "VideoBackground",
           "members": [
             {
@@ -136,6 +136,14 @@
               "kind": "field",
               "name": "volume",
               "description": "`0` to `1`, assignable - the same as `setVolume`",
+              "type": {
+                "text": "number"
+              }
+            },
+            {
+              "kind": "field",
+              "name": "playbackRate",
+              "description": "Playback speed the player confirmed, assignable - the same as `setPlaybackRate`",
               "type": {
                 "text": "number"
               }
@@ -244,6 +252,28 @@
                 {
                   "name": "volume",
                   "description": "`0` to `1`",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "getPlaybackRate",
+              "return": {
+                "type": {
+                  "text": "number | Promise<number> | undefined"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "setPlaybackRate",
+              "parameters": [
+                {
+                  "name": "rate",
+                  "description": "`0.25` to `2`; YouTube rounds toward `1`, and Vimeo lists the feature as PRO and Business only. A rate that is not a positive number is ignored - a `<select>` with nothing chosen must never reach a player",
                   "type": {
                     "text": "number"
                   }
@@ -440,6 +470,10 @@
               "name": "volumechange"
             },
             {
+              "description": "`playbackRate` changed, once for the rate that was asked for and again if the player answered with another one.",
+              "name": "ratechange"
+            },
+            {
               "description": "The video reached its end, or `end-at`. With `loop` on it restarts right after.",
               "name": "ended"
             }
@@ -514,6 +548,14 @@
               },
               "description": "`0` to `1`, applied on the first unmute.",
               "name": "volume",
+              "default": "1"
+            },
+            {
+              "type": {
+                "text": "number"
+              },
+              "description": "Playback speed, applied when the player is built. `0.25` to `2` is what all three take; YouTube rounds an unsupported rate toward `1`, Vimeo lists the feature as PRO and Business only, and anything that is not a positive number is normal speed.",
+              "name": "playback-rate",
               "default": "1"
             },
             {
@@ -879,6 +921,42 @@
         },
         {
           "kind": "class",
+          "description": "",
+          "name": "RateSelect",
+          "members": [
+            {
+              "kind": "method",
+              "name": "destroy"
+            },
+            {
+              "kind": "method",
+              "name": "onRateChange"
+            },
+            {
+              "kind": "method",
+              "name": "onChange"
+            },
+            {
+              "kind": "field",
+              "name": "element",
+              "default": "element"
+            },
+            {
+              "kind": "field",
+              "name": "target"
+            },
+            {
+              "kind": "field",
+              "name": "listeners",
+              "type": {
+                "text": "array"
+              },
+              "default": "[ [this.target, 'ratechange', this.onRateChange.bind(this)], [this.target, 'emptied', this.onRateChange.bind(this)], [this.element, 'change', this.onChange.bind(this)] ]"
+            }
+          ]
+        },
+        {
+          "kind": "class",
           "description": "Plays the `<video-background>` elements inside it as one playlist: one shown at a time,\nstepping to the next when the current one ends. Only `display` is toggled between the\nmembers - stacking them over the same box is your CSS.",
           "name": "VideoBackgroundGroup",
           "members": [
@@ -1075,6 +1153,14 @@
           "name": "MuteToggle",
           "declaration": {
             "name": "MuteToggle",
+            "module": "src/controls.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "RateSelect",
+          "declaration": {
+            "name": "RateSelect",
             "module": "src/controls.mjs"
           }
         },

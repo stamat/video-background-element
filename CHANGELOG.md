@@ -31,7 +31,37 @@ On `script/publish`, `script/changelog` cuts this section into a released entry
 in the same commit as the version bump, and the entry becomes the body of the
 GitHub release verbatim.
 
-## [Unreleased]
+## [Unreleased] — playback speed
+
+The element speaks the `<video>` API, and `playbackRate` was the one part of the playback
+half missing from it: a hero at half speed meant reaching past the element for
+`player.playbackRate`, `player.setPlaybackRate()` or `player.setPlaybackRate().then()`,
+written three ways for the three sources, and only after the player had answered.
+
+### Added
+
+- **`playback-rate` attribute**, default `1`, applied when the player is built:
+  `<video-background src="…" playback-rate="0.5">`. `0.25` to `2` is what all three take,
+  and a value that is not a positive number is normal speed rather than an error.
+- **`playbackRate`** on the element, assignable, with **`setPlaybackRate(rate)`** and
+  **`getPlaybackRate()`** — a promise on Vimeo, like `getVolume()`.
+- **`RateSelect`** in the controls bundle, over a `<select>` of your own whose options
+  carry the speeds as their values — `new RateSelect(select)`, or
+  `VideoBackgroundControls.RateSelect` from a script tag. It sets the rate on `change` and
+  follows `ratechange` back, so a rate the player rounded to something none of the options
+  names leaves the select with nothing chosen rather than naming the wrong speed. The
+  options are never written by it, and it has a `destroy()` like every other control.
+- **`ratechange`**, the `<video>`'s event name. It fires for the rate that was asked for,
+  and again if the player answered with another one: `playbackRate` reads back what is
+  playing, not what was requested. YouTube rounds an unsupported rate toward `1`, and
+  Vimeo lists the feature as PRO and Business only — a refusal there is a rejected promise,
+  warned on the console as `video-background: …`.
+
+Picture-in-picture and AirPlay were considered with it and left out. Both take the video out
+from behind the page, which is a player's job and not this element's; both are already one
+line away through `element.player` where they work at all; and YouTube's iframe API offers
+neither, so the element would have carried two methods that do nothing on one of its three
+sources.
 
 ## [1.1.0] - 2026-08-30 — `always-play` is `pause-offscreen`
 

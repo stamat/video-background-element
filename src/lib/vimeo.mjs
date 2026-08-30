@@ -40,8 +40,10 @@ export class Vimeo extends Provider {
     this.player.on('pause', this.onVideoPause.bind(this));
     this.player.on('bufferstart', this.onVideoBuffering.bind(this));
     this.player.on('timeupdate', this.onVideoTimeUpdate.bind(this));
+    this.player.on('playbackratechange', ({ playbackRate }) => this.onRateChange(playbackRate));
 
     if (this.volume !== 1 && !this.muted) this.setVolume(this.volume);
+    if (this.params['playback-rate'] !== 1) this.setPlaybackRate(this.params['playback-rate']);
   }
 
   generateSrcURL(id, unlisted) {
@@ -224,5 +226,23 @@ export class Vimeo extends Provider {
     this.volume = volume;
     this.player.setVolume(volume);
     this.emit('volumechange');
+  }
+
+  // a promise, the player reports asynchronously
+  getPlaybackRate() {
+    if (!this.player) return;
+    return this.player.getPlaybackRate();
+  }
+
+  // Listed as a PRO and Business feature, and asynchronous either way, so the rate is taken
+  // from the promise resolving with what the player took rather than from the call -
+  // `playbackRate` never claims a speed the video is not playing at, and a rejection is
+  // warned rather than swallowed. The promise answers as well as the event, since nothing
+  // here can prove the event fires for a rate the API set.
+  setPlaybackRate(rate) {
+    if (!this.player) return;
+    this.player.setPlaybackRate(rate)
+      .then((playbackRate) => this.onRateChange(playbackRate))
+      .catch((error) => console.warn(`video-background: ${error.message}`));
   }
 }

@@ -71,7 +71,8 @@ them.
 
 Sound is yours to switch on — a background starts muted or the browser will not start it.
 The controls are markup you write, wired by the second script; the toggles keep the name
-you gave them and carry the state in `aria-pressed`.
+you gave them and carry the state in `aria-pressed`, and the speeds in the `<select>` are
+yours too — `RateSelect` reads them and never writes one.
 
 ```html preview
 <div class="hero">
@@ -80,6 +81,11 @@ you gave them and carry the state in `aria-pressed`.
     <h2>Sound, and your own controls</h2>
     <button class="js-play" data-target="#sound">Play</button>
     <button class="js-mute" data-target="#sound">Mute</button>
+    <select class="js-rate" data-target="#sound" aria-label="Speed">
+      <option value="0.5">0.5×</option>
+      <option value="1">1×</option>
+      <option value="2">2×</option>
+    </select>
     <button onclick="document.querySelector('#sound').setAttribute('src', 'https://www.youtube.com/watch?v=UIyoNvInzCI')">Change source</button>
   </div>
   <div class="seek-bar-wrapper js-seek-bar-wrap" data-target="#sound">
@@ -90,9 +96,10 @@ you gave them and carry the state in `aria-pressed`.
 <script>
   // after the scripts, which load deferred
   addEventListener('DOMContentLoaded', () => {
-    const { PlayToggle, MuteToggle, SeekBar } = VideoBackgroundControls;
+    const { PlayToggle, MuteToggle, RateSelect, SeekBar } = VideoBackgroundControls;
     new PlayToggle(document.querySelector('.js-play'));
     new MuteToggle(document.querySelector('.js-mute'));
+    new RateSelect(document.querySelector('.js-rate'));
     new SeekBar(document.querySelector('.js-seek-bar-wrap'));
   });
 </script>
@@ -114,13 +121,15 @@ Same attributes on Vimeo. An unlisted link keeps its hash.
 
 Any `.mp4`, `.webm`, `.ogg`, `.avi`, `.mov`, `.m4v` or `.qt` url plays in a native
 `<video>`. `poster` is your own image; on YouTube and Vimeo `load-background` fetches the
-platform's thumbnail instead.
+platform's thumbnail instead. `playback-rate` is half speed here, which a file plays
+exactly — YouTube rounds a rate it does not have to the nearest one it does, and Vimeo
+lists the feature as PRO and Business only.
 
-```html preview
+```html preview tab=options
 <div class="hero">
-  <video-background src="https://media.w3.org/2010/05/sintel/trailer.mp4" poster="https://media.w3.org/2010/05/sintel/poster.png" start-at="10" end-at="25"></video-background>
+  <video-background src="https://media.w3.org/2010/05/sintel/trailer.mp4" poster="https://media.w3.org/2010/05/sintel/poster.png" start-at="10" end-at="25" playback-rate="0.5"></video-background>
   <div class="inner">
-    <h2>A plain video file</h2>
+    <h2>A plain video file, at half speed</h2>
   </div>
 </div>
 ```
@@ -182,20 +191,20 @@ so a page without them does not carry them.
 
 ```javascript
 import "video-background-element";
-import { PlayToggle, MuteToggle, SeekBar } from "video-background-element/controls";
+import { PlayToggle, MuteToggle, RateSelect, SeekBar } from "video-background-element/controls";
 import "video-background-element/controls.css"; // optional: the seek bar's look, the group's stacking
 ```
 
-From a script tag the controls bundle exposes the same three as
+From a script tag the controls bundle exposes the same four as
 `VideoBackgroundControls`, and defines `<video-background-group>`; the stylesheet is
 `video-background-controls.min.css` beside it.
 
 ## The element is the instance
 
 Whatever you would have asked an instance, ask the element: `play()`, `pause()`, `mute()`,
-`unmute()`, `setVolume(0.4)`, `seek(50)` in percent, `seekTo(12)` in seconds, and
-`currentState`, `currentTime`, `duration`, `paused`, `muted`, `player`, `playerElement`,
-`type` on it. The events are the `<video>`'s names, dispatched on the element and, like a
+`unmute()`, `setVolume(0.4)`, `setPlaybackRate(0.5)`, `seek(50)` in percent, `seekTo(12)`
+in seconds, and `currentState`, `currentTime`, `duration`, `paused`, `muted`,
+`playbackRate`, `player`, `playerElement`, `type` on it. The events are the `<video>`'s names, dispatched on the element and, like a
 `<video>`'s, not bubbling:
 
 ```javascript

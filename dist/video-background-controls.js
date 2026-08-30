@@ -23,6 +23,7 @@ var VideoBackgroundControls = (() => {
   __export(controls_exports, {
     MuteToggle: () => MuteToggle,
     PlayToggle: () => PlayToggle,
+    RateSelect: () => RateSelect,
     SeekBar: () => SeekBar,
     VideoBackgroundGroup: () => VideoBackgroundGroup,
     seekBarsFor: () => seekBarsFor
@@ -222,6 +223,36 @@ var VideoBackgroundControls = (() => {
       } else {
         this.target.mute();
       }
+    }
+  };
+  var RateSelect = class {
+    constructor(element, target) {
+      if (!element) return;
+      this.element = element;
+      this.target = resolveTarget(element, target);
+      if (!this.target) return;
+      nameInput(element, "Playback rate");
+      this.listeners = [
+        [this.target, "ratechange", this.onRateChange.bind(this)],
+        [this.target, "emptied", this.onRateChange.bind(this)],
+        [this.element, "change", this.onChange.bind(this)]
+      ];
+      attach(this.listeners);
+      this.onRateChange();
+    }
+    destroy() {
+      if (!this.listeners) return;
+      detach(this.listeners);
+      this.listeners = null;
+    }
+    // The rate the player answered with, which is not always the rate that was asked for -
+    // YouTube rounds one it does not have. A rate no option carries selects nothing rather
+    // than naming a speed the video is not playing at.
+    onRateChange() {
+      this.element.value = String(this.target.playbackRate);
+    }
+    onChange() {
+      this.target.setPlaybackRate(parseFloat(this.element.value));
     }
   };
   var VideoBackgroundGroup = class extends HTMLElement {

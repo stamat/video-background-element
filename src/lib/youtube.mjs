@@ -35,7 +35,8 @@ export class YouTube extends Provider {
     this.pending = new YT.Player(this.playerElement, {
       events: {
         'onReady': this.onVideoPlayerReady.bind(this),
-        'onStateChange': this.onVideoStateChange.bind(this)
+        'onStateChange': this.onVideoStateChange.bind(this),
+        'onPlaybackRateChange': (event) => this.onRateChange(event.data)
       }
     });
   }
@@ -103,6 +104,7 @@ export class YouTube extends Provider {
     this.pending = null;
 
     if (this.volume !== 1 && !this.muted) this.setVolume(this.volume);
+    if (this.params['playback-rate'] !== 1) this.setPlaybackRate(this.params['playback-rate']);
     this.mobileLowBatteryAutoplayHack();
 
     if (this.autoplayNow()) {
@@ -235,5 +237,19 @@ export class YouTube extends Provider {
     this.volume = volume;
     this.player.setVolume(volume * 100);
     this.emit('volumechange');
+  }
+
+  getPlaybackRate() {
+    if (!this.player) return;
+    return this.player.getPlaybackRate();
+  }
+
+  // a suggestion: an unsupported rate is rounded toward 1, and onPlaybackRateChange is
+  // what says which rate the video ended up playing at
+  setPlaybackRate(rate) {
+    if (!this.player) return;
+    this.playbackRate = rate;
+    this.player.setPlaybackRate(rate);
+    this.emit('ratechange');
   }
 }

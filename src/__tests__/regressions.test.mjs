@@ -15,7 +15,7 @@
 import { jest } from '@jest/globals'
 import { RE_VIDEO } from 'book-of-spells'
 import { VideoBackground, parseSource, readParams, DEFAULTS } from '../video-background.mjs'
-import { VideoBackgroundGroup, SeekBar, PlayToggle, MuteToggle, seekBarsFor } from '../controls.mjs'
+import { VideoBackgroundGroup, SeekBar, PlayToggle, MuteToggle, RateSelect, seekBarsFor } from '../controls.mjs'
 import { Provider } from '../lib/provider.mjs'
 import { Video, MIME_MAP, mimeType } from '../lib/video.mjs'
 import { YouTube } from '../lib/youtube.mjs'
@@ -451,11 +451,54 @@ describe('the <video> API', () => {
     expect(yt.buffered.end(0)).toBe(30)
   })
 
+  test('the rate a caller asks for reaches the player, reads back, and announces itself as ratechange', () => {
+    const host = file()
+    const seen = events(host, 'ratechange')
+    host.playbackRate = 0.5
+    expect(host.player.playbackRate).toBe(0.5)
+    expect(host.playbackRate).toBe(0.5)
+    expect(host.getPlaybackRate()).toBe(0.5)
+    expect(seen).toEqual(['ratechange'])
+  })
+
+  test('playback-rate is applied when the player is built, and a rate that is not a positive number is normal speed', () => {
+    expect(element('<video-background src="https://example.com/clip.mp4" playback-rate="0.5"></video-background>').player.playbackRate).toBe(0.5)
+    const broken = element('<video-background src="https://example.com/clip.mp4" playback-rate="fast"></video-background>')
+    expect(broken.playbackRate).toBe(1)
+    expect(broken.player.playbackRate).toBe(1)
+    expect(element('<video-background src="https://example.com/clip.mp4" playback-rate="-2"></video-background>').playbackRate).toBe(1)
+
+    // the same gate on the method, so a select with nothing chosen cannot hand a player a NaN
+    const host = element('<video-background src="https://example.com/clip.mp4"></video-background>')
+    host.setPlaybackRate(NaN)
+    host.playbackRate = 0
+    expect(host.playbackRate).toBe(1)
+    expect(host.player.playbackRate).toBe(1)
+  })
+
+  test('a rate the platform rounds off is corrected from the player rather than left as the number that was asked for', async () => {
+    const yt = element('<video-background src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" playback-rate="1.75"></video-background>')
+    await new Promise((resolve) => setTimeout(resolve))
+    const player = { playVideo: jest.fn(), getDuration: () => 60, seekTo: jest.fn(), setPlaybackRate: jest.fn(), getPlaybackRate: () => 1.5 }
+    players[0].options.events.onReady({ target: player })
+    expect(player.setPlaybackRate).toHaveBeenCalledWith(1.75)
+    expect(yt.playbackRate).toBe(1.75)
+
+    const seen = events(yt, 'ratechange')
+    players[0].options.events.onPlaybackRateChange({ data: 1.5 })
+    expect(yt.playbackRate).toBe(1.5)
+    expect(seen).toEqual(['ratechange'])
+    // the same rate again is the player repeating itself, not a change
+    players[0].options.events.onPlaybackRateChange({ data: 1.5 })
+    expect(seen).toEqual(['ratechange'])
+  })
+
   test('an element with nothing built answers the <video> names at rest rather than throwing', () => {
     const host = element('<video-background></video-background>')
     expect(host.readyState).toBe(0)
     expect(host.buffered.length).toBe(0)
-    expect(() => { host.currentTime = 5; host.volume = 0.5; host.muted = true }).not.toThrow()
+    expect(host.playbackRate).toBe(1)
+    expect(() => { host.currentTime = 5; host.volume = 0.5; host.muted = true; host.playbackRate = 2 }).not.toThrow()
   })
 })
 
@@ -467,7 +510,7 @@ describe('Vimeo background mode', () => {
     playerElement: { style: {} },
     params: { loop: false, autoplay: false, muted: false, 'pause-offscreen': true, 'start-at': 0, 'end-at': 0, 'force-on-low-battery': false, ...params },
     player: { play: jest.fn(), pause: jest.fn(), setLoop: jest.fn(), setMuted: jest.fn(), getDuration: () => Promise.resolve(42), ...player },
-    muted: params.muted ?? false, volume: 1, paused: false, requested: false, initialPlay: false, initialVolume: false,
+    muted: params.muted ?? false, volume: 1, playbackRate: 1, paused: false, requested: false, initialPlay: false, initialVolume: false,
     currentState: 'notstarted', duration: 0, isIntersecting: true, is_mobile: false
   })
 
@@ -478,6 +521,24 @@ describe('Vimeo background mode', () => {
     const quiet = vimeo({ muted: true })
     quiet.onVideoPlayerReady()
     expect(quiet.player.setMuted).not.toHaveBeenCalled()
+  })
+
+  test('a rate Vimeo took is read off the player answering, and one it refused is warned rather than claimed', async () => {
+    const took = vimeo({}, { setPlaybackRate: jest.fn(() => Promise.resolve(1.5)) })
+    const seen = events(took.host, 'ratechange')
+    took.setPlaybackRate(1.5)
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(took.player.setPlaybackRate).toHaveBeenCalledWith(1.5)
+    expect(took.playbackRate).toBe(1.5)
+    expect(seen).toEqual(['ratechange'])
+
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const refused = vimeo({}, { setPlaybackRate: jest.fn(() => Promise.reject(new Error('not available'))) })
+    refused.setPlaybackRate(2)
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(refused.playbackRate).toBe(1)
+    expect(warn).toHaveBeenCalledWith('video-background: not available')
+    warn.mockRestore()
   })
 
   test('the first play nobody asked for is paused; the first play the page asked for is not', () => {
@@ -922,7 +983,7 @@ describe('control teardown', () => {
   let target, targetTracked
   beforeEach(() => {
     target = element('<div id="hero"></div>')
-    Object.assign(target, { currentTime: 0, currentState: 'paused', timeToPercentage: (t) => t, seek: jest.fn(), play: jest.fn(), pause: jest.fn(), mute: jest.fn(), unmute: jest.fn(), muted: false, playerElement: null })
+    Object.assign(target, { currentTime: 0, currentState: 'paused', timeToPercentage: (t) => t, seek: jest.fn(), play: jest.fn(), pause: jest.fn(), mute: jest.fn(), unmute: jest.fn(), muted: false, playbackRate: 1, setPlaybackRate: jest.fn(), playerElement: null })
     targetTracked = track(target)
   })
 
@@ -985,10 +1046,30 @@ describe('control teardown', () => {
     expect(target.unmute).toHaveBeenCalledTimes(1)
   })
 
+  test('a destroyed rate select neither follows the video nor drives it', () => {
+    const select = element('<select id="rate" data-target="#hero"><option value="0.5">0.5&times;</option><option value="1">1&times;</option></select>')
+    const selectTracked = track(select)
+
+    const rate = new RateSelect(select)
+    select.value = '0.5'
+    dispatch(select, 'change')
+    expect(target.setPlaybackRate).toHaveBeenCalledWith(0.5)
+
+    rate.destroy()
+    expect(outstanding(targetTracked)).toEqual([])
+    expect(outstanding(selectTracked)).toEqual([])
+    target.playbackRate = 1
+    dispatch(target, 'ratechange')
+    expect(select.value).toBe('0.5')
+    dispatch(select, 'change')
+    expect(target.setPlaybackRate).toHaveBeenCalledTimes(1)
+  })
+
   test('destroying a control that never bound is a no-op', () => {
     expect(() => new SeekBar(null).destroy()).not.toThrow()
     expect(() => new PlayToggle(document.createElement('button')).destroy()).not.toThrow()
     expect(() => new MuteToggle(document.createElement('button')).destroy()).not.toThrow()
+    expect(() => new RateSelect(document.createElement('select')).destroy()).not.toThrow()
   })
 
   test('a control takes the element it is handed over data-target', () => {
@@ -1003,7 +1084,41 @@ describe('control ARIA', () => {
   let target
   beforeEach(() => {
     target = element('<div id="hero"></div>')
-    Object.assign(target, { currentState: 'paused', muted: true })
+    Object.assign(target, { currentState: 'paused', muted: true, playbackRate: 1, setPlaybackRate: jest.fn() })
+  })
+
+  test('a rate select drives the background, then follows the rate the player answered with', () => {
+    const select = element('<select id="rate" data-target="#hero"><option value="0.5">0.5&times;</option><option value="1">1&times;</option><option value="2">2&times;</option></select>')
+    new RateSelect(select)
+    expect(select.value).toBe('1')
+
+    select.value = '2'
+    dispatch(select, 'change')
+    expect(target.setPlaybackRate).toHaveBeenCalledWith(2)
+
+    // YouTube rounds a rate it does not have: the select carries no 1.5, and a blank one
+    // says the video is at a speed none of the options names rather than naming the wrong one
+    target.playbackRate = 1.5
+    dispatch(target, 'ratechange')
+    expect(select.selectedIndex).toBe(-1)
+
+    target.playbackRate = 0.5
+    dispatch(target, 'ratechange')
+    expect(select.value).toBe('0.5')
+
+    target.playbackRate = 1
+    dispatch(target, 'emptied')
+    expect(select.value).toBe('1')
+  })
+
+  test('a rate select with no name gets one, and one with a name keeps it', () => {
+    const bare = element('<select id="rate" data-target="#hero"><option value="1">1&times;</option></select>')
+    new RateSelect(bare)
+    expect(bare.getAttribute('aria-label')).toBe('Playback rate')
+
+    const named = element('<select id="rate-named" data-target="#hero" aria-label="Speed"><option value="1">1&times;</option></select>')
+    new RateSelect(named)
+    expect(named.getAttribute('aria-label')).toBe('Speed')
   })
 
   test('a toggle keeps the name it was given and carries the state in aria-pressed, as a toggle button and not a switch', () => {
