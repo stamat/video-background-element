@@ -31,7 +31,9 @@ On `script/publish`, `script/changelog` cuts this section into a released entry
 in the same commit as the version bump, and the entry becomes the body of the
 GitHub release verbatim.
 
-## [Unreleased] — `<video-background>`, out of youtube-background
+## [Unreleased]
+
+## [1.0.0] - 2026-08-30 — `<video-background>`, out of youtube-background
 
 [youtube-background](https://github.com/stamat/youtube-background) grew from a jQuery
 plugin into a factory that found the elements, indexed them by uid, watched for new ones
