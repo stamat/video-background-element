@@ -150,6 +150,9 @@ export class Provider {
 
   createFrame() {
     const frame = document.createElement('iframe');
+    // inline, not in the stylesheet: the browser's 2px inset is the frame's, not the page's,
+    // and `unstyled` takes the stylesheet off without wanting it back
+    frame.style.border = '0';
     if (this.params.title) frame.setAttribute('title', this.params.title);
     frame.setAttribute('allow', 'autoplay; mute');
     if (this.params.lazyloading) frame.setAttribute('loading', 'lazy');

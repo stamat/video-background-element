@@ -265,6 +265,7 @@
     }
     createFrame() {
       const frame = document.createElement("iframe");
+      frame.style.border = "0";
       if (this.params.title) frame.setAttribute("title", this.params.title);
       frame.setAttribute("allow", "autoplay; mute");
       if (this.params.lazyloading) frame.setAttribute("loading", "lazy");
@@ -533,6 +534,7 @@
     constructor(host, source) {
       super(host, source, "vimeo");
       this.unlisted = source.unlisted;
+      this.requested = false;
     }
     connect() {
       const frame = this.createFrame();
@@ -568,6 +570,7 @@
     }
     onVideoPlayerReady() {
       this.mobileLowBatteryAutoplayHack();
+      if (!this.muted) this.player.setMuted(false);
       if (this.params["start-at"]) this.seekTo(this.params["start-at"]);
       if (this.autoplayNow()) this.player.play();
       this.player.getDuration().then((duration) => {
@@ -599,7 +602,7 @@
       if (!this.initialPlay) {
         this.reveal();
         this.player.setLoop(this.params.loop);
-        if (!this.autoplayNow()) return this.player.pause();
+        if (!this.autoplayNow() && !this.requested) return this.player.pause();
       }
       const seconds = event.seconds;
       if (this.params["start-at"] && seconds < this.params["start-at"]) {
@@ -629,11 +632,13 @@
     }
     softPlay() {
       if (!this.player || this.currentState === "playing") return;
+      this.requested = true;
       this.player.play();
     }
     play() {
       if (!this.player) return;
       this.paused = false;
+      this.requested = true;
       this.player.play();
     }
     pause() {

@@ -18,6 +18,7 @@ export class Vimeo extends Provider {
   constructor(host, source) {
     super(host, source, 'vimeo');
     this.unlisted = source.unlisted;
+    this.requested = false; // a play this element asked for, as opposed to background mode's own
   }
 
   connect() {
@@ -67,6 +68,10 @@ export class Vimeo extends Provider {
   onVideoPlayerReady() {
     this.mobileLowBatteryAutoplayHack();
 
+    // background=1 mutes by definition, whatever the URL said - Vimeo documents it as
+    // controls off, loop, autoplay and mute in one - so sound is put back from the API
+    if (!this.muted) this.player.setMuted(false);
+
     if (this.params['start-at']) this.seekTo(this.params['start-at']);
 
     if (this.autoplayNow()) this.player.play();
@@ -107,12 +112,12 @@ export class Vimeo extends Provider {
     if (!this.initialPlay) {
       this.reveal();
 
-      // loop is on by default on the player side, whatever the embed URL said
+      // background=1 loops and autoplays by definition, whatever the embed URL said, so
+      // both are corrected here: the loop from the API, and a first play nobody asked for
+      // paused - unless the browser blocked that autoplay and this first play is the
+      // visitor's own, which `requested` tells apart
       this.player.setLoop(this.params.loop);
-
-      // the player sometimes starts on its own after the first buffer - not always,
-      // and nothing announces why - so the first play is re-checked against autoplay
-      if (!this.autoplayNow()) return this.player.pause();
+      if (!this.autoplayNow() && !this.requested) return this.player.pause();
     }
 
     const seconds = event.seconds;
@@ -150,12 +155,14 @@ export class Vimeo extends Provider {
 
   softPlay() {
     if (!this.player || this.currentState === 'playing') return;
+    this.requested = true;
     this.player.play();
   }
 
   play() {
     if (!this.player) return;
     this.paused = false;
+    this.requested = true;
     this.player.play();
   }
 

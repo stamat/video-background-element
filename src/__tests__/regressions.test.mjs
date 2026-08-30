@@ -18,6 +18,7 @@ import { VideoBackgroundGroup, SeekBar, PlayToggle, MuteToggle, seekBarsFor } fr
 import { Provider } from '../lib/provider.mjs'
 import { Video, MIME_MAP, mimeType } from '../lib/video.mjs'
 import { YouTube } from '../lib/youtube.mjs'
+import { Vimeo } from '../lib/vimeo.mjs'
 
 // jsdom logs "not implemented" for these instead of throwing; a stub keeps the output
 // clean and lets a test count the calls
@@ -456,6 +457,41 @@ describe('the <video> API', () => {
   })
 })
 
+describe('Vimeo background mode', () => {
+  // background=1 is what hides Vimeo's chrome, and it autoplays, loops and mutes by
+  // definition; these are the corrections the provider makes from the API
+  const vimeo = (params, player) => Object.assign(Object.create(Vimeo.prototype), {
+    host: document.createElement('div'),
+    playerElement: { style: {} },
+    params: { loop: false, autoplay: false, muted: false, 'always-play': false, 'start-at': 0, 'end-at': 0, 'force-on-low-battery': false, ...params },
+    player: { play: jest.fn(), pause: jest.fn(), setLoop: jest.fn(), setMuted: jest.fn(), getDuration: () => Promise.resolve(42), ...player },
+    muted: params.muted ?? false, volume: 1, paused: false, requested: false, initialPlay: false, initialVolume: false,
+    currentState: 'notstarted', duration: 0, isIntersecting: true, is_mobile: false
+  })
+
+  test('sound is put back at ready when muted is off, and left off when it is on', () => {
+    const loud = vimeo({ muted: false })
+    loud.onVideoPlayerReady()
+    expect(loud.player.setMuted).toHaveBeenCalledWith(false)
+    const quiet = vimeo({ muted: true })
+    quiet.onVideoPlayerReady()
+    expect(quiet.player.setMuted).not.toHaveBeenCalled()
+  })
+
+  test('the first play nobody asked for is paused; the first play the page asked for is not', () => {
+    const own = vimeo({})
+    own.onVideoPlay({ seconds: 0, duration: 42 })
+    expect(own.player.pause).toHaveBeenCalledTimes(1)
+    expect(own.player.setLoop).toHaveBeenCalledWith(false)
+
+    const asked = vimeo({})
+    asked.play()
+    asked.onVideoPlay({ seconds: 0, duration: 42 })
+    expect(asked.player.pause).not.toHaveBeenCalled()
+    expect(asked.currentState).toBe('playing')
+  })
+})
+
 describe('loading the YouTube API', () => {
   // A fresh copy of the module: the promise is per document and every other YouTube test in
   // this file has already resolved the shared one against the `YT.loaded` stub.
@@ -602,6 +638,8 @@ describe('the element', () => {
     for (const rule of rules) expect(rule.selectorText).toContain(':not([unstyled])')
     expect(host.player.style.display).toBe('block')
     expect(host.player.style.width).toBe('100%')
+    const framed = element('<video-background unstyled fit-box src="https://vimeo.com/137250145"></video-background>')
+    expect(framed.querySelector('iframe').style.border).toBe('0px')
   })
 
   test('a poster is written as an escaped url, and a static parent is made the containing block', () => {

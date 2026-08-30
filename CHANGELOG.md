@@ -73,7 +73,8 @@ names and the events take the `<video>`'s; the page markup and the calls around 
   `pointer-events: none`, the parent made a containing block — off, for the element in a
   page's flow rather than behind one: under a player, in a grid. Pair with `fit-box`, which
   now also makes the player a block so an inline iframe leaves no gap under itself; the box
-  is yours to size.
+  is yours to size. The iframe itself is built borderless, so the browser's 2px inset does
+  not appear around it once the stylesheet is off.
 
 ### Changed
 
@@ -134,3 +135,10 @@ names and the events take the `<video>`'s; the page markup and the calls around 
   the tab resumed anything pinned with `always-play` whether or not the visitor had ever
   pressed play; keeping a video going off-screen and starting one are different decisions,
   and the second is autoplay's.
+- **A Vimeo background with `muted="false"` has sound.** Vimeo's `background=1` — what
+  hides its chrome — autoplays, loops and mutes by definition; the loop and the autoplay
+  were already undone from the API, the mute never was, so `muted` read `false` over a
+  silent player. Sound is put back at ready. The other half of the same rule: the first
+  `play` used to be taken for background mode's own autoplay and paused, which swallowed a
+  visitor's first press whenever the browser had blocked that autoplay; a play this element
+  asked for is now told apart.
