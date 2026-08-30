@@ -28,6 +28,8 @@ export default [
   {
     files: ['src/__tests__/**/*.mjs'],
     languageOptions: {
+      // the tests are not shipped, so they may use the syntax the bundle target may not
+      ecmaVersion: 2022,
       globals: globals.jest
     }
   },

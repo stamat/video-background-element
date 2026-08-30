@@ -146,6 +146,7 @@
   var MODIFIER_KEYS = new Set(MODIFIERS);
 
   // src/lib/provider.mjs
+  var EMPTY_RANGES = { length: 0 };
   var Provider = class {
     constructor(host, source, type) {
       this.host = host;
@@ -169,12 +170,22 @@
       this.percentComplete = 0;
       this.params.resolution_mod = parseResolutionString(this.params.resolution);
     }
+    // the <video> event names, and like a <video>'s they do not bubble
     emit(name) {
-      this.host.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: this.host }));
+      this.host.dispatchEvent(new Event(name));
+    }
+    get buffered() {
+      return EMPTY_RANGES;
     }
     updateState(state) {
       this.currentState = state;
-      this.emit("video-background-state-change");
+      this.announceState();
+    }
+    // only two states have a <video> name of their own; play, pause and ended are announced
+    // by the handlers that reach them
+    announceState() {
+      if (this.currentState === "buffering") this.emit("waiting");
+      if (this.currentState === "playing") this.emit("playing");
     }
     // autoplay=1 goes into the embed URL only when the video would start anyway,
     // otherwise an off-screen lazy video plays into the void until scrolled to
@@ -204,23 +215,31 @@
     resize() {
       if (!this.playerElement) return;
       if (!this.params["fit-box"]) proportionalParentCoverResize(this.playerElement, this.params.resolution_mod, this.params.offset);
-      this.emit("video-background-resize");
     }
+    // The one place metadata is announced: a file's duration arrives with its metadata,
+    // YouTube's with the player, Vimeo's over a promise after it - so the first known
+    // duration is `loadedmetadata`, and only a number that moved is `durationchange`, since
+    // Vimeo repeats the same one on every timeupdate.
     setDuration(duration) {
-      this.duration = this.params["end-at"] ? Math.min(duration, this.params["end-at"]) : duration;
+      const capped = this.params["end-at"] ? Math.min(duration, this.params["end-at"]) : duration;
+      if (capped === this.duration) return;
+      const first = !this.duration;
+      this.duration = capped;
+      this.emit("durationchange");
+      if (first) this.emit("loadedmetadata");
     }
     setStartAt(startAt) {
       this.params["start-at"] = startAt;
     }
     setEndAt(endAt) {
       this.params["end-at"] = endAt;
-      if (this.duration > endAt) this.duration = endAt;
+      if (this.duration > endAt) this.setDuration(endAt);
       if (this.currentTime > endAt) this.onVideoEnded();
     }
     shouldPlay() {
       if (this.paused) return false;
       if (this.currentState === "ended" && !this.params.loop) return false;
-      if (this.params["always-play"] && this.currentState !== "playing") return true;
+      if (this.params["always-play"] && this.params.autoplay && this.currentState !== "playing") return true;
       if (this.isIntersecting && this.params.autoplay && this.currentState !== "playing") return true;
       return false;
     }
@@ -255,6 +274,7 @@
       this.playerElement = playerElement;
       playerElement.style.opacity = 0;
       if (this.params["fit-box"]) {
+        playerElement.style.display = "block";
         playerElement.style.width = "100%";
         playerElement.style.height = "100%";
       }
@@ -292,6 +312,8 @@
     return promise;
   }
   var youtubeReady = null;
+  var YOUTUBE_READY_INTERVAL = 100;
+  var YOUTUBE_READY_TRIES = 100;
   function loadYouTubeAPI() {
     if (youtubeReady) return youtubeReady;
     youtubeReady = new Promise((resolve, reject) => {
@@ -301,7 +323,18 @@
         if (typeof previous === "function") previous();
         resolve();
       };
-      loadScript("https://www.youtube.com/player_api").catch(reject);
+      loadScript("https://www.youtube.com/player_api").then(() => {
+        let tries = YOUTUBE_READY_TRIES;
+        const timer = setInterval(() => {
+          if (window.YT && window.YT.loaded) {
+            clearInterval(timer);
+            resolve();
+          } else if (--tries <= 0) {
+            clearInterval(timer);
+            reject(new Error("video-background: the YouTube API loaded but never became ready"));
+          }
+        }, YOUTUBE_READY_INTERVAL);
+      }).catch(reject);
     });
     return youtubeReady;
   }
@@ -375,7 +408,7 @@
         this.stopTimeUpdateTimer();
         return;
       }
-      this.emit("video-background-time-update");
+      this.emit("timeupdate");
     }
     onVideoPlayerReady(event) {
       if (this.destroyed) return;
@@ -388,7 +421,6 @@
         this.player.playVideo();
       }
       this.setDuration(this.player.getDuration());
-      this.emit("video-background-ready");
     }
     onVideoStateChange(event) {
       this.currentState = STATES[event.data];
@@ -399,7 +431,7 @@
       }
       if (this.currentState === "playing") this.onVideoPlay();
       if (this.currentState === "paused") this.onVideoPause();
-      this.emit("video-background-state-change");
+      this.announceState();
     }
     onVideoPlay() {
       this.reveal();
@@ -413,18 +445,25 @@
       if (!this.duration) {
         this.setDuration(this.player.getDuration());
       }
-      this.emit("video-background-play");
+      this.emit("play");
       this.startTimeUpdateTimer();
     }
     onVideoPause() {
       this.stopTimeUpdateTimer();
-      this.emit("video-background-pause");
+      this.emit("pause");
     }
     onVideoEnded() {
-      this.emit("video-background-ended");
+      this.emit("ended");
       if (this.paused || !this.params.loop) return this.pause();
       this.seekTo(this.params["start-at"]);
       this.player.playVideo();
+    }
+    // the player reports one fraction from the start, which is one range
+    get buffered() {
+      if (!this.player) return super.buffered;
+      const loaded = this.player.getVideoLoadedFraction() * this.player.getDuration();
+      if (!(loaded > 0)) return super.buffered;
+      return { length: 1, start: () => 0, end: () => loaded };
     }
     seek(percentage2) {
       this.seekTo(this.percentageToTime(percentage2), true);
@@ -432,7 +471,7 @@
     seekTo(seconds, allowSeekAhead = true) {
       if (!this.player) return;
       this.player.seekTo(seconds, allowSeekAhead);
-      this.emit("video-background-seeked");
+      this.emit("seeked");
     }
     softPause() {
       if (!this.player || this.currentState === "paused") return;
@@ -462,13 +501,13 @@
         this.setVolume(this.params.volume);
       }
       this.player.unMute();
-      this.emit("video-background-unmute");
+      this.emit("volumechange");
     }
     mute() {
       if (!this.player) return;
       this.muted = true;
       this.player.mute();
-      this.emit("video-background-mute");
+      this.emit("volumechange");
     }
     getVolume() {
       if (!this.player) return;
@@ -478,7 +517,7 @@
       if (!this.player) return;
       this.volume = volume;
       this.player.setVolume(volume * 100);
-      this.emit("video-background-volume-change");
+      this.emit("volumechange");
     }
   };
 
@@ -534,20 +573,19 @@
       this.player.getDuration().then((duration) => {
         this.setDuration(duration);
       });
-      this.emit("video-background-ready");
     }
     onVideoEnded() {
       this.updateState("ended");
-      this.emit("video-background-ended");
+      this.emit("ended");
       if (this.paused || !this.params.loop) return this.pause();
       this.seekTo(this.params["start-at"]);
+      this.emit("play");
       this.updateState("playing");
-      this.emit("video-background-play");
     }
     onVideoTimeUpdate(event) {
       this.currentTime = event.seconds;
       this.percentComplete = this.timeToPercentage(event.seconds);
-      this.emit("video-background-time-update");
+      this.emit("timeupdate");
       this.setDuration(event.duration);
       if (this.params["end-at"] && this.duration && event.seconds >= this.duration) {
         this.onVideoEnded();
@@ -570,12 +608,12 @@
       if (this.duration && seconds >= this.duration) {
         this.seekTo(this.params["start-at"]);
       }
+      this.emit("play");
       this.updateState("playing");
-      this.emit("video-background-play");
     }
     onVideoPause() {
       this.updateState("paused");
-      this.emit("video-background-pause");
+      this.emit("pause");
     }
     seek(percentage2) {
       this.seekTo(this.percentageToTime(percentage2));
@@ -583,7 +621,7 @@
     seekTo(time) {
       if (!this.player) return;
       this.player.setCurrentTime(time);
-      this.emit("video-background-seeked");
+      this.emit("seeked");
     }
     softPause() {
       if (!this.player || this.currentState === "paused") return;
@@ -611,13 +649,13 @@
         this.setVolume(this.params.volume);
       }
       this.player.setMuted(false);
-      this.emit("video-background-unmute");
+      this.emit("volumechange");
     }
     mute() {
       if (!this.player) return;
       this.muted = true;
       this.player.setMuted(true);
-      this.emit("video-background-mute");
+      this.emit("volumechange");
     }
     // a promise, the player reports asynchronously
     getVolume() {
@@ -628,7 +666,7 @@
       if (!this.player) return;
       this.volume = volume;
       this.player.setVolume(volume);
-      this.emit("video-background-volume-change");
+      this.emit("volumechange");
     }
   };
 
@@ -679,7 +717,6 @@
       this.setSource({ id: this.id, link: this.src });
       this.mount(video);
       this.mobileLowBatteryAutoplayHack();
-      this.emit("video-background-ready");
     }
     // native loop wraps to 0:00 and never fires 'ended', which would skip start-at
     // - with start-at the loop is driven from onVideoEnded instead. Re-run on every
@@ -709,10 +746,13 @@
     onVideoLoadedMetadata() {
       this.setDuration(this.player.duration);
     }
+    get buffered() {
+      return this.player ? this.player.buffered : super.buffered;
+    }
     onVideoTimeUpdate() {
       this.currentTime = this.player.currentTime;
       this.percentComplete = this.timeToPercentage(this.player.currentTime);
-      this.emit("video-background-time-update");
+      this.emit("timeupdate");
       if (this.params["end-at"] && this.currentTime >= this.duration) {
         this.onVideoEnded();
       }
@@ -726,16 +766,16 @@
       if (this.duration && seconds >= this.duration) {
         this.seekTo(this.params["start-at"]);
       }
+      this.emit("play");
       this.updateState("playing");
-      this.emit("video-background-play");
     }
     onVideoPause() {
       this.updateState("paused");
-      this.emit("video-background-pause");
+      this.emit("pause");
     }
     onVideoEnded() {
       this.updateState("ended");
-      this.emit("video-background-ended");
+      this.emit("ended");
       if (this.paused || !this.params.loop) return this.pause();
       this.seekTo(this.params["start-at"]);
       if (this.player.paused) {
@@ -757,7 +797,7 @@
       } else {
         this.player.currentTime = seconds;
       }
-      this.emit("video-background-seeked");
+      this.emit("seeked");
     }
     softPause() {
       if (!this.player || this.currentState === "paused") return;
@@ -785,13 +825,13 @@
         this.initialVolume = true;
         this.setVolume(this.params.volume);
       }
-      this.emit("video-background-unmute");
+      this.emit("volumechange");
     }
     mute() {
       if (!this.player) return;
       this.muted = true;
       this.player.muted = true;
-      this.emit("video-background-mute");
+      this.emit("volumechange");
     }
     getVolume() {
       if (!this.player) return;
@@ -801,7 +841,7 @@
       if (!this.player) return;
       this.volume = volume;
       this.player.volume = volume;
-      this.emit("video-background-volume-change");
+      this.emit("volumechange");
     }
     // a <video> has no API object to destroy, removing it is the teardown
     destroy() {
@@ -846,7 +886,8 @@
     "no-cookie": true,
     "lazyloading": false,
     "force-on-low-battery": false,
-    "title": "Video background"
+    "title": "Video background",
+    "unstyled": false
   };
   function readParams(element, defaults = DEFAULTS) {
     const params = {};
@@ -865,9 +906,9 @@
   }
   var STYLE_ID = "video-background-style";
   var STYLE = `
-:where(video-background) { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; overflow: hidden; pointer-events: none; background-size: cover; background-repeat: no-repeat; background-position: center; }
-:where(video-background > iframe), :where(video-background > video) { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 0; }
-:where(video-background > img) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+:where(video-background:not([unstyled])) { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; overflow: hidden; pointer-events: none; background-size: cover; background-repeat: no-repeat; background-position: center; }
+:where(video-background:not([unstyled]) > iframe), :where(video-background:not([unstyled]) > video) { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 0; }
+:where(video-background:not([unstyled]) > img) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 `;
   function adoptStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -935,6 +976,7 @@
       } else if (this.params["load-background"] && source.type === "vimeo") {
         this.style.backgroundImage = cssURL(`https://vumbnail.com/${source.id}.jpg`);
       }
+      if (this.params.unstyled) return;
       const parent = this.parentElement;
       const position = parent && window.getComputedStyle(parent).position;
       if (parent && (!position || position === "static")) {
@@ -983,7 +1025,7 @@
       this.provider.destroy();
       this.provider = null;
       this.style.backgroundImage = "";
-      this.dispatchEvent(new CustomEvent("video-background-destroyed", { bubbles: true, detail: this }));
+      this.dispatchEvent(new Event("emptied"));
     }
     /* ===== state, proxied from the provider ===== */
     /** @type {string | undefined} `youtube`, `vimeo` or `video` */
@@ -998,29 +1040,47 @@
     get playerElement() {
       return this.provider ? this.provider.playerElement : null;
     }
-    /** @type {boolean} True after `pause()` - a pause the visitor asked for, which scrolling and tab switches never override */
+    /** @type {boolean} What it means on a `<video>`: true unless playing or buffering. A held pause is `provider.paused` */
     get paused() {
-      return this.provider ? this.provider.paused : false;
+      return !this.provider || !["playing", "buffering"].includes(this.provider.currentState);
     }
-    /** @type {boolean} */
+    /** @type {boolean} Assignable - the same as `mute()` / `unmute()` */
     get muted() {
       return this.provider ? this.provider.muted : false;
     }
-    /** @type {number} `0` to `1` */
+    set muted(value) {
+      if (value) this.mute();
+      else this.unmute();
+    }
+    /** @type {number} `0` to `1`, assignable - the same as `setVolume` */
     get volume() {
       return this.provider ? this.provider.volume : 0;
+    }
+    set volume(value) {
+      this.setVolume(value);
     }
     /** @type {string} `notstarted`, `playing`, `paused`, `buffering` or `ended` */
     get currentState() {
       return this.provider ? this.provider.currentState : "notstarted";
     }
-    /** @type {number} Seconds */
+    /** @type {number} Seconds, assignable - the same as `seekTo` */
     get currentTime() {
       return this.provider ? this.provider.currentTime : 0;
+    }
+    set currentTime(value) {
+      this.seekTo(value);
     }
     /** @type {number} Seconds, capped by `end-at` */
     get duration() {
       return this.provider ? this.provider.duration : 0;
+    }
+    /** @type {number} `0` until the duration is known, `1` after - the `<video>` scale, stopping at metadata */
+    get readyState() {
+      return this.duration > 0 ? 1 : 0;
+    }
+    /** @type {TimeRanges | {length: number}} The `<video>`'s own for a file, YouTube's loaded fraction as one range, empty on Vimeo */
+    get buffered() {
+      return this.provider ? this.provider.buffered : EMPTY_RANGES;
     }
     /** @type {number} `0` to `100` */
     get percentComplete() {

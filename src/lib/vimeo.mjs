@@ -74,24 +74,22 @@ export class Vimeo extends Provider {
     this.player.getDuration().then((duration) => {
       this.setDuration(duration);
     });
-
-    this.emit('video-background-ready');
   }
 
   onVideoEnded() {
     this.updateState('ended');
-    this.emit('video-background-ended');
+    this.emit('ended');
     if (this.paused || !this.params.loop) return this.pause();
 
     this.seekTo(this.params['start-at']);
+    this.emit('play');
     this.updateState('playing');
-    this.emit('video-background-play');
   }
 
   onVideoTimeUpdate(event) {
     this.currentTime = event.seconds;
     this.percentComplete = this.timeToPercentage(event.seconds);
-    this.emit('video-background-time-update');
+    this.emit('timeupdate');
     this.setDuration(event.duration);
 
     if (this.params['end-at'] && this.duration && event.seconds >= this.duration) {
@@ -126,13 +124,13 @@ export class Vimeo extends Provider {
       this.seekTo(this.params['start-at']);
     }
 
+    this.emit('play');
     this.updateState('playing');
-    this.emit('video-background-play');
   }
 
   onVideoPause() {
     this.updateState('paused');
-    this.emit('video-background-pause');
+    this.emit('pause');
   }
 
   seek(percentage) {
@@ -142,7 +140,7 @@ export class Vimeo extends Provider {
   seekTo(time) {
     if (!this.player) return;
     this.player.setCurrentTime(time);
-    this.emit('video-background-seeked');
+    this.emit('seeked');
   }
 
   softPause() {
@@ -176,14 +174,14 @@ export class Vimeo extends Provider {
       this.setVolume(this.params.volume);
     }
     this.player.setMuted(false);
-    this.emit('video-background-unmute');
+    this.emit('volumechange');
   }
 
   mute() {
     if (!this.player) return;
     this.muted = true;
     this.player.setMuted(true);
-    this.emit('video-background-mute');
+    this.emit('volumechange');
   }
 
   // a promise, the player reports asynchronously
@@ -196,6 +194,6 @@ export class Vimeo extends Provider {
     if (!this.player) return;
     this.volume = volume;
     this.player.setVolume(volume);
-    this.emit('video-background-volume-change');
+    this.emit('volumechange');
   }
 }

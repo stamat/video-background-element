@@ -103,7 +103,10 @@ Run this checklist before writing any code; stop at the first "no".
   `if (!this.player)` guard means "not ready". A scroll-in during that gap once threw
   `playVideo is not a function`; keep the guards, never call into `pending`.
 - **One promise per platform API per document** (`load.mjs`). A second element never
-  installs a second `onYouTubeIframeAPIReady`. Tests share it too: `window.YT` is stubbed
+  installs a second `onYouTubeIframeAPIReady`. The hook is not trusted alone: another
+  library on the page — media-elements does this — overwrites it without chaining, and the
+  API calls it once, so `YT.loaded` is watched after the script loads too, for ten seconds,
+  then the promise rejects loudly. Tests share it too: `window.YT` is stubbed
   once in `beforeAll` and never deleted mid-file, or a later element's `initPlayer` rejects
   unseen.
 - **`attributeChangedCallback` runs before `connectedCallback` on upgrade, with
@@ -113,6 +116,16 @@ Run this checklist before writing any code; stop at the first "no".
   The stylesheet never sets it; a seek bar reads it to reveal on a seek before play.
 - **A group reads its members on `DOMContentLoaded`** when the parser upgraded it, because
   the children do not exist yet in `connectedCallback`. Members inserted later are not seen.
+- **Two `paused`s.** `element.paused` is HTML's — `true` unless `currentState` is
+  `playing` or `buffering` — because the element speaks the `<video>` API. `provider.paused`
+  is the held pause `pause()` sets and scroll-in never overrides. Nothing public reads the
+  second; `shouldPlay()` is how a caller asks it.
+- **`loadedmetadata` and `durationchange` come from `setDuration`, on change only.** No
+  provider announces readiness itself: YouTube knows the duration at player-ready, Vimeo
+  over a promise after it, a file on its own metadata event, so the first known duration is
+  the one honest *metadata* moment. Vimeo repeats the same duration four times a second;
+  an event per tick would be noise. `playing` and `waiting` come from `announceState()`;
+  `play`, `pause` and `ended` from the handlers that reach them, `play` before `playing`.
 - **`npm run manifest` runs twice per build on purpose.** poops runs `exec` last, but the
   copy of the manifest into `_site/` runs before that; `package.json` runs it ahead of
   poops, and `poops.json`'s `exec.scripts` runs it again so a watch rebuild picks up a JSDoc

@@ -193,12 +193,12 @@ From a script tag the controls bundle exposes the same three as
 Whatever you would have asked an instance, ask the element: `play()`, `pause()`, `mute()`,
 `unmute()`, `setVolume(0.4)`, `seek(50)` in percent, `seekTo(12)` in seconds, and
 `currentState`, `currentTime`, `duration`, `paused`, `muted`, `player`, `playerElement`,
-`type` on it. Every event is dispatched on the element, bubbles, and carries the element in
-`event.detail`:
+`type` on it. The events are the `<video>`'s names, dispatched on the element and, like a
+`<video>`'s, not bubbling:
 
 ```javascript
-document.querySelector("#hero").addEventListener("video-background-ready", (event) => {
-  console.log(event.detail.type, event.detail.currentState);
+document.querySelector("#hero").addEventListener("loadedmetadata", (event) => {
+  console.log(event.target.type, event.target.currentState);
 });
 ```
 

@@ -21,7 +21,7 @@
           "type": {
             "text": "object"
           },
-          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'always-play': false, 'start-at': 0, 'end-at': 0, 'volume': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background' }"
+          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'always-play': false, 'start-at': 0, 'end-at': 0, 'volume': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background', 'unstyled': false }"
         },
         {
           "kind": "function",
@@ -38,7 +38,7 @@
         },
         {
           "kind": "class",
-          "description": "A video background from a YouTube, Vimeo or video file link: a cover-fit, muted,\nlooping player behind the element's parent, paused while off-screen. The element is the\ninstance - its playback API and state live on it, and every event carries it in\n`event.detail`.\n\nOptions are read from attributes when the element builds, which is when it connects with\na `src`. Only `src`, `start-at` and `end-at` are watched afterwards; the rest take effect\non the next build, which removing and re-adding `src` forces.",
+          "description": "A video background from a YouTube, Vimeo or video file link: a cover-fit, muted,\nlooping player behind the element's parent, paused while off-screen. The element is the\ninstance - its playback API and state live on it, and its events are dispatched on it.\n\nIt speaks the `<video>` API: `paused`, `currentTime`, `duration`, `volume`, `muted`,\n`readyState`, `buffered`, `play()`, `pause()`, and the `<video>` event names -\nnon-bubbling, like a `<video>`'s - so a media chrome that drives a `<video>` drives this.\nNot `controls`, `seekable`, `textTracks` or `playbackRate`, and nothing with the script\nblocked.\n\nOptions are read from attributes when the element builds, which is when it connects with\na `src`. Only `src`, `start-at` and `end-at` are watched afterwards; the rest take effect\non the next build, which removing and re-adding `src` forces.",
           "name": "VideoBackground",
           "members": [
             {
@@ -118,7 +118,7 @@
             {
               "kind": "field",
               "name": "paused",
-              "description": "True after `pause()` - a pause the visitor asked for, which scrolling and tab switches never override",
+              "description": "What it means on a `<video>`: true unless playing or buffering. A held pause is `provider.paused`",
               "type": {
                 "text": "boolean"
               },
@@ -127,19 +127,18 @@
             {
               "kind": "field",
               "name": "muted",
+              "description": "Assignable - the same as `mute()` / `unmute()`",
               "type": {
                 "text": "boolean"
-              },
-              "readonly": true
+              }
             },
             {
               "kind": "field",
               "name": "volume",
-              "description": "`0` to `1`",
+              "description": "`0` to `1`, assignable - the same as `setVolume`",
               "type": {
                 "text": "number"
-              },
-              "readonly": true
+              }
             },
             {
               "kind": "field",
@@ -153,11 +152,10 @@
             {
               "kind": "field",
               "name": "currentTime",
-              "description": "Seconds",
+              "description": "Seconds, assignable - the same as `seekTo`",
               "type": {
                 "text": "number"
-              },
-              "readonly": true
+              }
             },
             {
               "kind": "field",
@@ -165,6 +163,24 @@
               "description": "Seconds, capped by `end-at`",
               "type": {
                 "text": "number"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "readyState",
+              "description": "`0` until the duration is known, `1` after - the `<video>` scale, stopping at metadata",
+              "type": {
+                "text": "number"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "buffered",
+              "description": "The `<video>`'s own for a file, YouTube's loaded fraction as one range, empty on Vimeo",
+              "type": {
+                "text": "TimeRanges | {length: number}"
               },
               "readonly": true
             },
@@ -381,55 +397,51 @@
           ],
           "events": [
             {
-              "name": "video-background-destroyed",
+              "name": "emptied",
               "type": {
-                "text": "CustomEvent"
+                "text": "Event"
               },
               "description": "The player was torn down: `src` removed, or the element disconnected."
             },
             {
-              "description": "The player can play. A video file is ready at once.",
-              "name": "video-background-ready"
+              "description": "The duration is known and the player answers: a file's with its metadata, YouTube's with the player, Vimeo's a promise after it. Non-bubbling, like every event here.",
+              "name": "loadedmetadata"
+            },
+            {
+              "description": "The duration became known, or `end-at` cut it.",
+              "name": "durationchange"
             },
             {
               "description": "Playback started.",
-              "name": "video-background-play"
+              "name": "play"
+            },
+            {
+              "description": "`currentState` became `playing`.",
+              "name": "playing"
             },
             {
               "description": "Playback paused.",
-              "name": "video-background-pause"
+              "name": "pause"
             },
             {
-              "description": "The video reached its end, or `end-at`. With `loop` on it restarts right after.",
-              "name": "video-background-ended"
-            },
-            {
-              "description": "The position moved, through `seek`, `seekTo` or a seek bar.",
-              "name": "video-background-seeked"
+              "description": "`currentState` became `buffering`.",
+              "name": "waiting"
             },
             {
               "description": "The position advanced while playing, about four times a second.",
-              "name": "video-background-time-update"
+              "name": "timeupdate"
             },
             {
-              "description": "`currentState` changed: `notstarted`, `playing`, `paused`, `buffering` or `ended`.",
-              "name": "video-background-state-change"
+              "description": "The position moved, through `seek`, `seekTo`, `currentTime` or a seek bar.",
+              "name": "seeked"
             },
             {
-              "description": "Sound off.",
-              "name": "video-background-mute"
+              "description": "`volume` or `muted` changed.",
+              "name": "volumechange"
             },
             {
-              "description": "Sound on.",
-              "name": "video-background-unmute"
-            },
-            {
-              "description": "`volume` changed.",
-              "name": "video-background-volume-change"
-            },
-            {
-              "description": "The player was re-sized to the box.",
-              "name": "video-background-resize"
+              "description": "The video reached its end, or `end-at`. With `loop` on it restarts right after.",
+              "name": "ended"
             }
           ],
           "attributes": [
@@ -574,6 +586,14 @@
               "description": "Accessible name of the player frame.",
               "name": "title",
               "default": "Video background"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Adopt none of the element's own rules and leave the parent as found, for the element in a page's flow rather than behind one. Pair with `fit-box`.",
+              "name": "unstyled",
+              "default": "false"
             }
           ],
           "superclass": {
@@ -739,7 +759,7 @@
               "type": {
                 "text": "array"
               },
-              "default": "[ [this.target, 'video-background-time-update', this.onTimeUpdate.bind(this)], [this.target, 'video-background-seeked', this.onSeeked.bind(this)], [this.target, 'video-background-destroyed', this.onDestroyed.bind(this)], [this.inputElem, 'input', this.onInput.bind(this)], [this.inputElem, 'change', this.onChange.bind(this)] ]"
+              "default": "[ [this.target, 'timeupdate', this.onTimeUpdate.bind(this)], [this.target, 'seeked', this.onSeeked.bind(this)], [this.target, 'emptied', this.onDestroyed.bind(this)], [this.inputElem, 'input', this.onInput.bind(this)], [this.inputElem, 'change', this.onChange.bind(this)] ]"
             }
           ]
         },
@@ -796,7 +816,7 @@
               "type": {
                 "text": "array"
               },
-              "default": "[ [this.target, 'video-background-state-change', this.onStateChange.bind(this)], [this.target, 'video-background-play', this.onPlay.bind(this)], [this.target, 'video-background-pause', this.onPause.bind(this)], [this.target, 'video-background-destroyed', this.onPause.bind(this)], [this.element, 'click', this.onClick.bind(this)] ]"
+              "default": "[ [this.target, 'playing', this.onStateChange.bind(this)], [this.target, 'waiting', this.onStateChange.bind(this)], [this.target, 'play', this.onPlay.bind(this)], [this.target, 'pause', this.onPause.bind(this)], [this.target, 'ended', this.onPause.bind(this)], [this.target, 'emptied', this.onPause.bind(this)], [this.element, 'click', this.onClick.bind(this)] ]"
             }
           ]
         },
@@ -820,15 +840,15 @@
             },
             {
               "kind": "method",
-              "name": "onReady"
+              "name": "onLoaded"
             },
             {
               "kind": "method",
-              "name": "onMute"
+              "name": "onVolumeChange"
             },
             {
               "kind": "method",
-              "name": "onUnmute"
+              "name": "onEmptied"
             },
             {
               "kind": "method",
@@ -853,7 +873,7 @@
               "type": {
                 "text": "array"
               },
-              "default": "[ [this.target, 'video-background-ready', this.onReady.bind(this)], [this.target, 'video-background-mute', this.onMute.bind(this)], [this.target, 'video-background-unmute', this.onUnmute.bind(this)], [this.target, 'video-background-destroyed', this.onUnmute.bind(this)], [this.element, 'click', this.onClick.bind(this)] ]"
+              "default": "[ [this.target, 'loadedmetadata', this.onLoaded.bind(this)], [this.target, 'volumechange', this.onVolumeChange.bind(this)], [this.target, 'emptied', this.onEmptied.bind(this)], [this.element, 'click', this.onClick.bind(this)] ]"
             }
           ]
         },

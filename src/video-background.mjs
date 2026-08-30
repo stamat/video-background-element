@@ -2,6 +2,7 @@ import { RE_YOUTUBE, RE_VIMEO, RE_VIDEO, stringToType, isMobile } from 'book-of-
 import { YouTube } from './lib/youtube.mjs';
 import { Vimeo, getVimeoUnlistedHash } from './lib/vimeo.mjs';
 import { Video } from './lib/video.mjs';
+import { EMPTY_RANGES } from './lib/provider.mjs';
 
 // probed in order, so the platform patterns get first refusal on a link
 const PROVIDERS = [
@@ -43,7 +44,8 @@ export const DEFAULTS = {
   'no-cookie': true,
   'lazyloading': false,
   'force-on-low-battery': false,
-  'title': 'Video background'
+  'title': 'Video background',
+  'unstyled': false
 };
 
 // A bare attribute is `true` for a boolean option and nothing for the rest, so
@@ -72,11 +74,12 @@ export function readParams(element, defaults = DEFAULTS) {
 const STYLE_ID = 'video-background-style';
 
 // :where() keeps every rule at zero specificity, so a plain type selector on the
-// page overrides any of these without !important
+// page overrides any of these without !important; `unstyled` takes the whole sheet off one
+// element, which one shared <style> can only do by selector
 const STYLE = `
-:where(video-background) { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; overflow: hidden; pointer-events: none; background-size: cover; background-repeat: no-repeat; background-position: center; }
-:where(video-background > iframe), :where(video-background > video) { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 0; }
-:where(video-background > img) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+:where(video-background:not([unstyled])) { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; overflow: hidden; pointer-events: none; background-size: cover; background-repeat: no-repeat; background-position: center; }
+:where(video-background:not([unstyled]) > iframe), :where(video-background:not([unstyled]) > video) { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 0; }
+:where(video-background:not([unstyled]) > img) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 `;
 
 function adoptStyle() {
@@ -94,8 +97,13 @@ function cssURL(url) {
 /**
  * A video background from a YouTube, Vimeo or video file link: a cover-fit, muted,
  * looping player behind the element's parent, paused while off-screen. The element is the
- * instance - its playback API and state live on it, and every event carries it in
- * `event.detail`.
+ * instance - its playback API and state live on it, and its events are dispatched on it.
+ *
+ * It speaks the `<video>` API: `paused`, `currentTime`, `duration`, `volume`, `muted`,
+ * `readyState`, `buffered`, `play()`, `pause()`, and the `<video>` event names -
+ * non-bubbling, like a `<video>`'s - so a media chrome that drives a `<video>` drives this.
+ * Not `controls`, `seekable`, `textTracks` or `playbackRate`, and nothing with the script
+ * blocked.
  *
  * Options are read from attributes when the element builds, which is when it connects with
  * a `src`. Only `src`, `start-at` and `end-at` are watched afterwards; the rest take effect
@@ -122,19 +130,19 @@ function cssURL(url) {
  * @attr {boolean} [lazyloading=false] - `loading="lazy"` on the iframe. YouTube and Vimeo only.
  * @attr {boolean} [force-on-low-battery=false] - On a touch device, start a muted autoplay on the first touch, for the low power modes that block autoplay.
  * @attr {string} [title=Video background] - Accessible name of the player frame.
+ * @attr {boolean} [unstyled=false] - Adopt none of the element's own rules and leave the parent as found, for the element in a page's flow rather than behind one. Pair with `fit-box`.
  *
- * @fires video-background-ready - The player can play. A video file is ready at once.
- * @fires video-background-play - Playback started.
- * @fires video-background-pause - Playback paused.
- * @fires video-background-ended - The video reached its end, or `end-at`. With `loop` on it restarts right after.
- * @fires video-background-seeked - The position moved, through `seek`, `seekTo` or a seek bar.
- * @fires video-background-time-update - The position advanced while playing, about four times a second.
- * @fires video-background-state-change - `currentState` changed: `notstarted`, `playing`, `paused`, `buffering` or `ended`.
- * @fires video-background-mute - Sound off.
- * @fires video-background-unmute - Sound on.
- * @fires video-background-volume-change - `volume` changed.
- * @fires video-background-resize - The player was re-sized to the box.
- * @fires video-background-destroyed - The player was torn down: `src` removed, or the element disconnected.
+ * @fires loadedmetadata - The duration is known and the player answers: a file's with its metadata, YouTube's with the player, Vimeo's a promise after it. Non-bubbling, like every event here.
+ * @fires durationchange - The duration became known, or `end-at` cut it.
+ * @fires play - Playback started.
+ * @fires playing - `currentState` became `playing`.
+ * @fires pause - Playback paused.
+ * @fires waiting - `currentState` became `buffering`.
+ * @fires timeupdate - The position advanced while playing, about four times a second.
+ * @fires seeked - The position moved, through `seek`, `seekTo`, `currentTime` or a seek bar.
+ * @fires volumechange - `volume` or `muted` changed.
+ * @fires ended - The video reached its end, or `end-at`. With `loop` on it restarts right after.
+ * @fires emptied - The player was torn down: `src` removed, or the element disconnected.
  */
 export class VideoBackground extends HTMLElement {
   static get observedAttributes() {
@@ -204,6 +212,7 @@ export class VideoBackground extends HTMLElement {
       this.style.backgroundImage = cssURL(`https://vumbnail.com/${source.id}.jpg`);
     }
 
+    if (this.params.unstyled) return;
     // only a statically positioned parent needs a containing block, and only
     // the computed value can tell us that - the parent may be positioned by CSS
     const parent = this.parentElement;
@@ -265,7 +274,7 @@ export class VideoBackground extends HTMLElement {
     this.provider.destroy();
     this.provider = null;
     this.style.backgroundImage = '';
-    this.dispatchEvent(new CustomEvent('video-background-destroyed', { bubbles: true, detail: this }));
+    this.dispatchEvent(new Event('emptied'));
   }
 
   /* ===== state, proxied from the provider ===== */
@@ -276,18 +285,25 @@ export class VideoBackground extends HTMLElement {
   get player() { return this.provider ? this.provider.player : null; }
   /** @type {HTMLIFrameElement | HTMLVideoElement | null} The iframe or `<video>` inside the element */
   get playerElement() { return this.provider ? this.provider.playerElement : null; }
-  /** @type {boolean} True after `pause()` - a pause the visitor asked for, which scrolling and tab switches never override */
-  get paused() { return this.provider ? this.provider.paused : false; }
-  /** @type {boolean} */
+  /** @type {boolean} What it means on a `<video>`: true unless playing or buffering. A held pause is `provider.paused` */
+  get paused() { return !this.provider || !['playing', 'buffering'].includes(this.provider.currentState); }
+  /** @type {boolean} Assignable - the same as `mute()` / `unmute()` */
   get muted() { return this.provider ? this.provider.muted : false; }
-  /** @type {number} `0` to `1` */
+  set muted(value) { if (value) this.mute(); else this.unmute(); }
+  /** @type {number} `0` to `1`, assignable - the same as `setVolume` */
   get volume() { return this.provider ? this.provider.volume : 0; }
+  set volume(value) { this.setVolume(value); }
   /** @type {string} `notstarted`, `playing`, `paused`, `buffering` or `ended` */
   get currentState() { return this.provider ? this.provider.currentState : 'notstarted'; }
-  /** @type {number} Seconds */
+  /** @type {number} Seconds, assignable - the same as `seekTo` */
   get currentTime() { return this.provider ? this.provider.currentTime : 0; }
+  set currentTime(value) { this.seekTo(value); }
   /** @type {number} Seconds, capped by `end-at` */
   get duration() { return this.provider ? this.provider.duration : 0; }
+  /** @type {number} `0` until the duration is known, `1` after - the `<video>` scale, stopping at metadata */
+  get readyState() { return this.duration > 0 ? 1 : 0; }
+  /** @type {TimeRanges | {length: number}} The `<video>`'s own for a file, YouTube's loaded fraction as one range, empty on Vimeo */
+  get buffered() { return this.provider ? this.provider.buffered : EMPTY_RANGES; }
   /** @type {number} `0` to `100` */
   get percentComplete() { return this.provider ? this.provider.percentComplete : 0; }
   /** @type {boolean} Whether the element is in the viewport */

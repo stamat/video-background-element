@@ -1,7 +1,10 @@
 import { isMobile, parseResolutionString, proportionalParentCoverResize, percentage, fixed } from 'book-of-spells';
 
+// TimeRanges with nothing in it - what `buffered` reads until a source type reports better
+export const EMPTY_RANGES = { length: 0 };
+
 // Playback state and the arithmetic shared by every source type. The element proxies its
-// public API onto this, so `event.detail.currentState` and `provider.currentState` are
+// public API onto this, so `event.target.currentState` and `provider.currentState` are
 // the same field - the element is the address, this is the state.
 export class Provider {
   constructor(host, source, type) {
@@ -32,13 +35,25 @@ export class Provider {
     this.params.resolution_mod = parseResolutionString(this.params.resolution);
   }
 
+  // the <video> event names, and like a <video>'s they do not bubble
   emit(name) {
-    this.host.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: this.host }));
+    this.host.dispatchEvent(new Event(name));
+  }
+
+  get buffered() {
+    return EMPTY_RANGES;
   }
 
   updateState(state) {
     this.currentState = state;
-    this.emit('video-background-state-change');
+    this.announceState();
+  }
+
+  // only two states have a <video> name of their own; play, pause and ended are announced
+  // by the handlers that reach them
+  announceState() {
+    if (this.currentState === 'buffering') this.emit('waiting');
+    if (this.currentState === 'playing') this.emit('playing');
   }
 
   // autoplay=1 goes into the embed URL only when the video would start anyway,
@@ -72,12 +87,20 @@ export class Provider {
   resize() {
     if (!this.playerElement) return;
     if (!this.params['fit-box']) proportionalParentCoverResize(this.playerElement, this.params.resolution_mod, this.params.offset);
-    this.emit('video-background-resize');
   }
 
+  // The one place metadata is announced: a file's duration arrives with its metadata,
+  // YouTube's with the player, Vimeo's over a promise after it - so the first known
+  // duration is `loadedmetadata`, and only a number that moved is `durationchange`, since
+  // Vimeo repeats the same one on every timeupdate.
   setDuration(duration) {
     // end-at caps the playable range, a shorter video caps end-at
-    this.duration = this.params['end-at'] ? Math.min(duration, this.params['end-at']) : duration;
+    const capped = this.params['end-at'] ? Math.min(duration, this.params['end-at']) : duration;
+    if (capped === this.duration) return;
+    const first = !this.duration;
+    this.duration = capped;
+    this.emit('durationchange');
+    if (first) this.emit('loadedmetadata');
   }
 
   setStartAt(startAt) {
@@ -86,14 +109,16 @@ export class Provider {
 
   setEndAt(endAt) {
     this.params['end-at'] = endAt;
-    if (this.duration > endAt) this.duration = endAt;
+    if (this.duration > endAt) this.setDuration(endAt);
     if (this.currentTime > endAt) this.onVideoEnded();
   }
 
   shouldPlay() {
     if (this.paused) return false;
     if (this.currentState === 'ended' && !this.params.loop) return false;
-    if (this.params['always-play'] && this.currentState !== 'playing') return true;
+    // always-play keeps a video going off-screen; starting one is still autoplay's call,
+    // or a tab switch would start a video the visitor never pressed play on
+    if (this.params['always-play'] && this.params.autoplay && this.currentState !== 'playing') return true;
     if (this.isIntersecting && this.params.autoplay && this.currentState !== 'playing') return true;
     return false;
   }
@@ -136,6 +161,8 @@ export class Provider {
     // inline, not in the stylesheet: it is state that reveal() flips, not a style to override
     playerElement.style.opacity = 0;
     if (this.params['fit-box']) {
+      // block, or an inline iframe leaves a line-height gap under itself in an unstyled box
+      playerElement.style.display = 'block';
       playerElement.style.width = '100%';
       playerElement.style.height = '100%';
     }

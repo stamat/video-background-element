@@ -78,7 +78,7 @@ export class YouTube extends Provider {
       this.stopTimeUpdateTimer();
       return;
     }
-    this.emit('video-background-time-update');
+    this.emit('timeupdate');
   }
 
   onVideoPlayerReady(event) {
@@ -95,8 +95,6 @@ export class YouTube extends Provider {
     }
 
     this.setDuration(this.player.getDuration());
-
-    this.emit('video-background-ready');
   }
 
   onVideoStateChange(event) {
@@ -114,7 +112,7 @@ export class YouTube extends Provider {
     if (this.currentState === 'playing') this.onVideoPlay();
     if (this.currentState === 'paused') this.onVideoPause();
 
-    this.emit('video-background-state-change');
+    this.announceState();
   }
 
   onVideoPlay() {
@@ -133,21 +131,29 @@ export class YouTube extends Provider {
       this.setDuration(this.player.getDuration());
     }
 
-    this.emit('video-background-play');
+    this.emit('play');
     this.startTimeUpdateTimer();
   }
 
   onVideoPause() {
     this.stopTimeUpdateTimer();
-    this.emit('video-background-pause');
+    this.emit('pause');
   }
 
   onVideoEnded() {
-    this.emit('video-background-ended');
+    this.emit('ended');
 
     if (this.paused || !this.params.loop) return this.pause();
     this.seekTo(this.params['start-at']);
     this.player.playVideo();
+  }
+
+  // the player reports one fraction from the start, which is one range
+  get buffered() {
+    if (!this.player) return super.buffered;
+    const loaded = this.player.getVideoLoadedFraction() * this.player.getDuration();
+    if (!(loaded > 0)) return super.buffered;
+    return { length: 1, start: () => 0, end: () => loaded };
   }
 
   seek(percentage) {
@@ -157,7 +163,7 @@ export class YouTube extends Provider {
   seekTo(seconds, allowSeekAhead = true) {
     if (!this.player) return;
     this.player.seekTo(seconds, allowSeekAhead);
-    this.emit('video-background-seeked');
+    this.emit('seeked');
   }
 
   softPause() {
@@ -193,14 +199,14 @@ export class YouTube extends Provider {
       this.setVolume(this.params.volume);
     }
     this.player.unMute();
-    this.emit('video-background-unmute');
+    this.emit('volumechange');
   }
 
   mute() {
     if (!this.player) return;
     this.muted = true;
     this.player.mute();
-    this.emit('video-background-mute');
+    this.emit('volumechange');
   }
 
   getVolume() {
@@ -212,6 +218,6 @@ export class YouTube extends Provider {
     if (!this.player) return;
     this.volume = volume;
     this.player.setVolume(volume * 100);
-    this.emit('video-background-volume-change');
+    this.emit('volumechange');
   }
 }

@@ -25,6 +25,10 @@ function loadScript(src) {
 
 let youtubeReady = null;
 
+// ten seconds of asking, at the rate the API itself takes to come up
+export const YOUTUBE_READY_INTERVAL = 100;
+export const YOUTUBE_READY_TRIES = 100;
+
 export function loadYouTubeAPI() {
   if (youtubeReady) return youtubeReady;
 
@@ -38,7 +42,22 @@ export function loadYouTubeAPI() {
       resolve();
     };
 
-    loadScript('https://www.youtube.com/player_api').catch(reject);
+    // Another library on the page can take that hook without chaining it - media-elements
+    // does - and then the one call goes to them. So the API is watched directly as well:
+    // `YT.loaded` turns 1 when it can build players. Bounded, or a load that never gets
+    // there would be asked forever.
+    loadScript('https://www.youtube.com/player_api').then(() => {
+      let tries = YOUTUBE_READY_TRIES;
+      const timer = setInterval(() => {
+        if (window.YT && window.YT.loaded) {
+          clearInterval(timer);
+          resolve();
+        } else if (--tries <= 0) {
+          clearInterval(timer);
+          reject(new Error('video-background: the YouTube API loaded but never became ready'));
+        }
+      }, YOUTUBE_READY_INTERVAL);
+    }).catch(reject);
   });
 
   return youtubeReady;

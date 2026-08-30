@@ -55,7 +55,6 @@ export class Video extends Provider {
     this.mount(video);
 
     this.mobileLowBatteryAutoplayHack();
-    this.emit('video-background-ready');
   }
 
   // native loop wraps to 0:00 and never fires 'ended', which would skip start-at
@@ -90,10 +89,14 @@ export class Video extends Provider {
     this.setDuration(this.player.duration);
   }
 
+  get buffered() {
+    return this.player ? this.player.buffered : super.buffered;
+  }
+
   onVideoTimeUpdate() {
     this.currentTime = this.player.currentTime;
     this.percentComplete = this.timeToPercentage(this.player.currentTime);
-    this.emit('video-background-time-update');
+    this.emit('timeupdate');
 
     if (this.params['end-at'] && this.currentTime >= this.duration) {
       this.onVideoEnded();
@@ -112,18 +115,18 @@ export class Video extends Provider {
       this.seekTo(this.params['start-at']);
     }
 
+    this.emit('play');
     this.updateState('playing');
-    this.emit('video-background-play');
   }
 
   onVideoPause() {
     this.updateState('paused');
-    this.emit('video-background-pause');
+    this.emit('pause');
   }
 
   onVideoEnded() {
     this.updateState('ended');
-    this.emit('video-background-ended');
+    this.emit('ended');
     if (this.paused || !this.params.loop) return this.pause();
 
     this.seekTo(this.params['start-at']);
@@ -153,7 +156,7 @@ export class Video extends Provider {
     } else {
       this.player.currentTime = seconds;
     }
-    this.emit('video-background-seeked');
+    this.emit('seeked');
   }
 
   softPause() {
@@ -186,14 +189,14 @@ export class Video extends Provider {
       this.initialVolume = true;
       this.setVolume(this.params.volume);
     }
-    this.emit('video-background-unmute');
+    this.emit('volumechange');
   }
 
   mute() {
     if (!this.player) return;
     this.muted = true;
     this.player.muted = true;
-    this.emit('video-background-mute');
+    this.emit('volumechange');
   }
 
   getVolume() {
@@ -205,7 +208,7 @@ export class Video extends Provider {
     if (!this.player) return;
     this.volume = volume;
     this.player.volume = volume;
-    this.emit('video-background-volume-change');
+    this.emit('volumechange');
   }
 
   // a <video> has no API object to destroy, removing it is the teardown

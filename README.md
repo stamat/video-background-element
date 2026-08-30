@@ -48,7 +48,7 @@ the player half, and a plain `<video>` covers the file-only case with nothing to
 | Instead | When |
 | --- | --- |
 | [`<lite-youtube>`](https://github.com/justinribeiro/lite-youtube) | a YouTube embed that shows a thumbnail and loads the player on click — a video the visitor watches, not one behind the page |
-| [`<youtube-video>`](https://github.com/muxinc/media-elements) / `<vimeo-video>` | an element with the `<video>` API over a platform player, for a media chrome of your own |
+| [`<youtube-video>`](https://github.com/muxinc/media-elements) / `<vimeo-video>` | the whole `<video>` API over a platform player — captions, seekable ranges, `controls` — where this element speaks [the playback half](#the-video-api) |
 | `<video autoplay muted loop playsinline>` + `object-fit: cover` | the source is a file you host, and you never need YouTube or Vimeo |
 
 ## Install
@@ -140,16 +140,17 @@ bare way to write a false one.
 | `lazyloading` | `false` | `loading="lazy"` on the iframe. YouTube and Vimeo only |
 | `force-on-low-battery` | `false` | On a touch device, start a muted autoplay on the first touch, for the low power modes that block autoplay |
 | `title` | `Video background` | Accessible name of the player frame |
+| `unstyled` | `false` | Adopt none of the element's own rules — no absolute cover over the parent, no `pointer-events: none`, and the parent left as found. For the element in a page's flow rather than behind one: pair with `fit-box`, and the box is yours to size |
 
 ## The element is the instance
 
 Whatever you would have asked an instance, ask the element. The API, the state and every
-event live on it, and `event.detail` is the element.
+event live on it, and the names are the `<video>`'s.
 
 ```javascript
 const hero = document.querySelector("#hero");
 
-hero.addEventListener("video-background-ready", () => {
+hero.addEventListener("loadedmetadata", () => {
   hero.unmute();
   hero.setVolume(0.4);
 });
@@ -161,10 +162,10 @@ document.querySelectorAll("video-background").forEach((element) => element.pause
 
 | Method | Accepts | Does |
 | --- | --- | --- |
-| `play()` | — | Play, and clear `paused` |
-| `pause()` | — | Pause, and set `paused` — nothing but `play()` starts it again |
-| `softPlay()` | — | Play without clearing `paused`, the way scrolling into view does |
-| `softPause()` | — | Pause without setting `paused`, the way scrolling out does |
+| `play()` | — | Play, and release a held pause |
+| `pause()` | — | Pause and hold it — scrolling and tab switches never override, only `play()` does |
+| `softPlay()` | — | Play without releasing a held pause, the way scrolling into view does |
+| `softPause()` | — | Pause without holding it, the way scrolling out does |
 | `mute()` / `unmute()` | — | Sound off, sound on |
 | `setVolume(volume)` | `0`–`1` | Set the volume |
 | `getVolume()` | — | The volume — a promise on Vimeo, which reports asynchronously |
@@ -187,31 +188,68 @@ touch device — the methods are no-ops and the state below is at rest. Nothing 
 | `player` | The YouTube or Vimeo player object, or the `<video>` element |
 | `playerElement` | The `<iframe>` or `<video>` inside the element |
 | `currentState` | `notstarted`, `playing`, `paused`, `buffering` or `ended` |
-| `currentTime` | Seconds |
+| `currentTime` | Seconds, assignable — the same as `seekTo` |
 | `duration` | Seconds, capped by `end-at` |
 | `percentComplete` | `0`–`100` |
-| `paused` | `true` after `pause()` — a pause the visitor asked for, which scrolling and tab switches never override |
-| `muted` | |
-| `volume` | `0`–`1` |
+| `paused` | `true` unless playing or buffering — what it means on a `<video>`, not whether a pause is held |
+| `muted` | Assignable |
+| `volume` | `0`–`1`, assignable |
+| `readyState` | `0` until the duration is known, `1` after — the `<video>` scale, stopping at metadata |
+| `buffered` | A `TimeRanges`-shaped list: the `<video>`'s own for a file, YouTube's loaded fraction as one range, empty on Vimeo |
 | `isIntersecting` | Whether the element is in the viewport |
 | `params` | The attributes as read at build |
 
 ### Events
 
-Dispatched on the element, bubbling, the element in `event.detail`:
+The `<video>`'s names, dispatched on the element — and, like a `<video>`'s, they do not
+bubble; `event.target` is the element:
 
 | Event | When |
 | --- | --- |
-| `video-background-ready` | The player can play. A video file is ready at once |
-| `video-background-play` / `video-background-pause` | Playback started, paused |
-| `video-background-ended` | The video reached its end, or `end-at`. With `loop` on it restarts right after |
-| `video-background-seeked` | The position moved, through `seek`, `seekTo` or a seek bar |
-| `video-background-time-update` | The position advanced while playing — about four times a second |
-| `video-background-state-change` | `currentState` changed |
-| `video-background-mute` / `video-background-unmute` | Sound off, on |
-| `video-background-volume-change` | `volume` changed |
-| `video-background-resize` | The player was re-sized to the box |
-| `video-background-destroyed` | The player was torn down: `src` removed, or the element disconnected |
+| `loadedmetadata` | The duration is known and the player answers — a file's with its metadata, YouTube's with the player, Vimeo's a promise after it |
+| `durationchange` | The duration became known, or `end-at` cut it |
+| `play` / `pause` | Playback started, paused |
+| `playing` / `waiting` | `currentState` became `playing`, `buffering` |
+| `ended` | The video reached its end, or `end-at`. With `loop` on it restarts right after |
+| `seeked` | The position moved, through `seek`, `seekTo`, `currentTime` or a seek bar |
+| `timeupdate` | The position advanced while playing — about four times a second |
+| `volumechange` | `volume` or `muted` changed |
+| `emptied` | The player was torn down: `src` removed, or the element disconnected |
+
+### The `<video>` API
+
+Those events, `play()`, `pause()`, and `paused`, `currentTime`, `duration`, `volume`,
+`muted`, `readyState` and `buffered` above are the `<video>`'s surface, so anything that
+drives a media element by its standard names — a media chrome, a player element, your own
+code written once for both — drives this one. A background stays a background: no chrome
+grows here, and `autoplay`, `muted`, `loop` and the scroll gate keep their defaults until
+you turn them off.
+
+Not spoken, and worth knowing before you lean on it: `controls` — the platform chrome is
+always off, and an assignment lands as a plain property; `seekable`, `textTracks`,
+`playbackRate`, `error` — nothing here reports them; and nothing at all with the script
+blocked, because the element builds the player. That last one is the difference from a
+`<video>` you wrote yourself.
+
+A player over it, with [media-player](https://github.com/stamat/media-player), is the
+attributes that turn the background off, and its class marking the media:
+
+```html
+<media-player>
+  <video-background
+    class="media-player-media"
+    src="https://www.youtube.com/watch?v=…"
+    autoplay="false" muted="false" loop="false" always-play unstyled fit-box
+    title="…"
+  ></video-background>
+  <!-- your controls -->
+</media-player>
+```
+
+`unstyled` takes the element's own rules off it — the absolute cover over the parent, the
+`pointer-events: none`, the parent made a containing block — so it sits in the player's flow
+the way a `<video>` would, and `fit-box` fills it. `always-play` takes the scroll gate off,
+and the three `="false"` make it start with sound, once, and stop at the end.
 
 ## Controls
 
@@ -305,7 +343,7 @@ agree; the manifest is never edited by hand.
 This is [youtube-background](https://github.com/stamat/youtube-background) continued under a
 name that admits it plays Vimeo and files too: the same providers, the `[data-vbg]` factory
 replaced by the element. The page markup changes, the options keep their names, and the
-events keep theirs. That package stays published at 1.x and keeps its own README and
+events take the `<video>`'s. That package stays published at 1.x and keeps its own README and
 [demo](https://stamat.github.io/youtube-background/); nothing there breaks. The
 [changelog](CHANGELOG.md) has every change with its reason; this is the map.
 
@@ -327,6 +365,14 @@ events keep theirs. That package stays published at 1.x and keeps its own README
 | `youtube-background` on npm | `video-background` on npm |
 | `new VideoBackgroundGroup(el)`, `VideoBackgroundGroups` | `<video-background-group>` |
 | `instance.element` | the element |
+| `video-background-ready` | `loadedmetadata` — once the duration is known, not once the API answers |
+| `video-background-play`, `-pause`, `-ended`, `-seeked` | `play`, `pause`, `ended`, `seeked` |
+| `video-background-time-update` | `timeupdate` |
+| `video-background-mute`, `-unmute`, `-volume-change` | `volumechange`, with `muted` to tell which |
+| `video-background-state-change` | `playing` and `waiting`; `currentState` is still the property |
+| `video-background-destroyed` | `emptied` |
+| `video-background-resize` | gone — `ResizeObserver` on the element |
+| `event.detail`, bubbling | `event.target`; nothing bubbles, like a `<video>`'s events |
 
 ## Known limits
 
@@ -338,7 +384,8 @@ element inside the section, first.
 `<iframe>` and `<video>`, your poster `<img>` is a plain child — and the price is that a
 page-wide `iframe { … }` rule reaches them too. The element's own rules have no
 specificity, so anything of yours wins; if something of yours breaks the player, that is
-where to look.
+where to look. `unstyled` takes the element's rules off it altogether, for the element in a
+page's flow rather than behind one.
 
 **YouTube's play/pause bezel cannot be removed.** Every playback toggle flashes YouTube's
 own big round icon in the middle of the frame — `.ytp-bezel`, drawn by the player inside the

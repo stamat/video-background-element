@@ -39,8 +39,8 @@ and tore them down — all of it API a page had to call in the right order, and 
 what a custom element does by itself. This is that library as one tag,
 `<video-background src="…">`, under a name that admits it plays Vimeo and files too: it
 builds when it connects, tears down when it leaves, and the element is the instance.
-`youtube-background` stays published at 1.x. Against its 1.2.0, the options and the events
-keep their names; the page markup and the calls around it go.
+`youtube-background` stays published at 1.x. Against its 1.2.0, the options keep their
+names and the events take the `<video>`'s; the page markup and the calls around it go.
 
 ### Added
 
@@ -61,9 +61,33 @@ keep their names; the page markup and the calls around it go.
 - **The demo page is live.** Every sample is rendered from the code under it by
   [`<code-preview>`](https://github.com/stamat/code-preview-element) and editable in place,
   with an Options tab read from the manifest.
+- **The element speaks the `<video>` API.** `paused`, `currentTime`, `duration`, `volume`,
+  `muted`, `readyState` and `buffered` read the way they read on a `<video>`; `currentTime`,
+  `volume` and `muted` assign; and the events are the `<video>`'s — below, under Changed.
+  Anything driving a media element by its standard names —
+  [media-player](https://github.com/stamat/media-player), with
+  `class="media-player-media"` on this element — drives a YouTube, Vimeo or file background
+  without a provider of its own. `controls`, `seekable`, `textTracks` and `playbackRate`
+  are not spoken, and the README says so.
+- **`unstyled`.** The element's own rules — the absolute cover over the parent,
+  `pointer-events: none`, the parent made a containing block — off, for the element in a
+  page's flow rather than behind one: under a player, in a grid. Pair with `fit-box`, which
+  now also makes the player a block so an inline iframe leaves no gap under itself; the box
+  is yours to size.
 
 ### Changed
 
+- **The events are the `<video>`'s: `video-background-*` is gone.** One vocabulary
+  instead of two names per event, and it is the one every media chrome already listens
+  for. `ready` → `loadedmetadata`, and it moves: the duration known, not the API answering
+  — which on Vimeo and files is when `unmute()` and `seekTo()` first work anyway. `play`,
+  `pause`, `ended`, `seeked`, `timeupdate` lose the prefix; `mute`, `unmute` and
+  `volume-change` are `volumechange`, with `muted` to tell which; `state-change` is
+  `playing` and `waiting`, and `currentState` stays a property; `destroyed` is `emptied`;
+  `resize` is gone, a `ResizeObserver` on the element being the platform's own. None of
+  them bubble and there is no `event.detail` — `event.target` is the element, as on a
+  `<video>`. `paused` changes meaning with them: *not playing*, not *a pause the visitor
+  holds*. The README's map from youtube-background has every pair.
 - **The bundles are `video-background.js` and `video-background-controls.js`**, in place
   of `jquery.youtube-background.js` and `youtube-background-experimental.js`. The first
   exposes nothing on `window` — the class is `customElements.get("video-background")`; the
@@ -96,3 +120,17 @@ keep their names; the page markup and the calls around it go.
   prefixes**: the attribute is `src`, the options are bare.
 - **The `params` argument.** Options are attributes; there is no constructor to pass an
   object to.
+
+### Fixed
+
+- **A page that also loads media-elements no longer leaves YouTube backgrounds dead.**
+  Both libraries load the YouTube API and both claim `window.onYouTubeIframeAPIReady`; this
+  one chained whatever was there, theirs overwrites, and the API calls the hook once — so
+  with theirs assigned last, the promise here never resolved, no player was built, and
+  `play()` was a no-op with nothing in the console. `YT.loaded` is now watched beside the
+  hook for ten seconds after the script loads, and a load that never comes up rejects with
+  a message instead of waiting forever. Same code shipped in youtube-background 1.x.
+- **`always-play` no longer starts a video `autoplay="false"` said not to.** Coming back to
+  the tab resumed anything pinned with `always-play` whether or not the visitor had ever
+  pressed play; keeping a video going off-screen and starting one are different decisions,
+  and the second is autoplay's.

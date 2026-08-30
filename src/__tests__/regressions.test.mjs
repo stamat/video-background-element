@@ -1,7 +1,8 @@
 // Covers what has actually shipped broken here, and the element's lifecycle: URL parsing,
 // MIME and attribute resolution, time/percentage arithmetic, the loop and pause decisions,
-// the scroll-in gate, building and tearing down on `src` and on disconnect, group
-// wrap-around, control teardown, the ARIA the controls write, and the seek bar's motion
+// the scroll-in gate, building and tearing down on `src` and on disconnect, the `<video>`
+// API the element speaks - `paused`, the setters, `readyState`, `buffered`, and the event
+// names, which are the `<video>`'s - group wrap-around, control teardown, the ARIA the controls write, and the seek bar's motion
 // between time reports.
 //
 // Deliberately not covered: anything needing a real YouTube, Vimeo or media player. jsdom
@@ -170,13 +171,14 @@ describe('time and percentage conversion', () => {
 
 describe('setDuration', () => {
   test('clamps to end-at, or to a shorter video', () => {
-    const capped = Object.assign(Object.create(Provider.prototype), { params: { 'end-at': 20 } })
+    // a host, because a duration that moves is announced on it
+    const capped = Object.assign(Object.create(Provider.prototype), { host: document.createElement('div'), params: { 'end-at': 20 } })
     capped.setDuration(60)
     expect(capped.duration).toBe(20)
     capped.setDuration(15)
     expect(capped.duration).toBe(15)
 
-    const full = Object.assign(Object.create(Provider.prototype), { params: { 'end-at': 0 } })
+    const full = Object.assign(Object.create(Provider.prototype), { host: document.createElement('div'), params: { 'end-at': 0 } })
     full.setDuration(60)
     expect(full.duration).toBe(60)
   })
@@ -224,19 +226,19 @@ describe('onVideoEnded', () => {
   }
 
   test('a looping video rewinds to start-at and plays again', () => {
-    expect(ended()).toEqual(['state:ended', 'video-background-ended', 'seekTo:3', 'play'])
+    expect(ended()).toEqual(['state:ended', 'ended', 'seekTo:3', 'play'])
   })
 
   test('an explicit user pause outlives the end of the video', () => {
-    expect(ended({ paused: true })).toEqual(['state:ended', 'video-background-ended', 'pause'])
+    expect(ended({ paused: true })).toEqual(['state:ended', 'ended', 'pause'])
   })
 
   test('a loop cut short by end-at re-announces play without restarting', () => {
-    expect(ended({ player: { paused: false, play: () => { throw new Error('restarted') } } })).toEqual(['state:ended', 'video-background-ended', 'seekTo:3', 'onVideoPlay'])
+    expect(ended({ player: { paused: false, play: () => { throw new Error('restarted') } } })).toEqual(['state:ended', 'ended', 'seekTo:3', 'onVideoPlay'])
   })
 
   test('a non-looping video stays stopped', () => {
-    expect(ended({ params: { loop: false, 'start-at': 3 } })).toEqual(['state:ended', 'video-background-ended', 'pause'])
+    expect(ended({ params: { loop: false, 'start-at': 3 } })).toEqual(['state:ended', 'ended', 'pause'])
   })
 })
 
@@ -296,6 +298,12 @@ describe('shouldPlay', () => {
     expect(shouldPlay({ ...playable, isIntersecting: false })).toBe(false)
   })
 
+  test('always-play keeps a video going, it never starts one autoplay said not to', () => {
+    const pinned = { ...playable, isIntersecting: false, params: { ...playable.params, 'always-play': true, autoplay: false } }
+    expect(shouldPlay({ ...pinned, currentState: 'notstarted' })).toBe(false)
+    expect(shouldPlay({ ...pinned, currentState: 'paused' })).toBe(false)
+  })
+
   test('plays off-screen when pinned with always-play', () => {
     expect(shouldPlay({ ...playable, isIntersecting: false, params: { ...playable.params, 'always-play': true } })).toBe(true)
   })
@@ -347,6 +355,155 @@ describe('scrolling into view', () => {
   })
 })
 
+describe('the <video> API', () => {
+  const file = () => element('<video-background src="https://example.com/clip.mp4"></video-background>')
+
+  test('paused reads the way it does on a <video>: true until playing, false while playing or buffering, true with nothing built', () => {
+    expect(element('<video-background></video-background>').paused).toBe(true)
+    const host = file()
+    expect(host.paused).toBe(true)
+    host.provider.updateState('playing')
+    expect(host.paused).toBe(false)
+    host.provider.updateState('buffering')
+    expect(host.paused).toBe(false)
+    host.provider.updateState('paused')
+    expect(host.paused).toBe(true)
+    host.provider.updateState('ended')
+    expect(host.paused).toBe(true)
+  })
+
+  test('the events are the <video>\'s names, in its order, and stay on the element', () => {
+    const wrap = element('<div></div>')
+    const host = document.createElement('video-background')
+    host.setAttribute('src', 'https://example.com/clip.mp4')
+    const seen = events(host, 'loadedmetadata', 'play', 'playing', 'pause', 'timeupdate', 'volumechange', 'ended', 'seeked', 'waiting')
+    const escaped = events(wrap, 'play', 'timeupdate', 'loadedmetadata')
+    wrap.appendChild(host)
+    expect(seen).toEqual([])
+
+    const provider = host.provider
+    provider.onVideoPlay()
+    expect(seen.slice(0, 2)).toEqual(['play', 'playing'])
+    provider.onVideoTimeUpdate()
+    expect(seen).toContain('timeupdate')
+    provider.onVideoPause()
+    expect(seen).toContain('pause')
+    provider.setVolume(0.5)
+    expect(seen.filter((name) => name === 'volumechange')).toHaveLength(1)
+    provider.mute()
+    provider.unmute()
+    // four, not three: the first unmute also restores the volume, which is a change of its own
+    expect(seen.filter((name) => name === 'volumechange')).toHaveLength(4)
+    provider.onVideoBuffering()
+    expect(seen).toContain('waiting')
+    provider.seekTo(3)
+    expect(seen).toContain('seeked')
+    provider.onVideoEnded()
+    expect(seen).toContain('ended')
+    expect(escaped).toEqual([])
+  })
+
+  test('durationchange fires when the duration becomes known and when end-at cuts it, not on a tick that repeats it', () => {
+    const host = file()
+    const seen = events(host, 'durationchange')
+    host.provider.setDuration(60)
+    host.provider.setDuration(60)
+    expect(seen).toEqual(['durationchange'])
+    expect(host.duration).toBe(60)
+    host.provider.setEndAt(30)
+    expect(seen).toEqual(['durationchange', 'durationchange'])
+    expect(host.duration).toBe(30)
+  })
+
+  test('currentTime, volume and muted can be assigned, and go where seekTo, setVolume and mute go', () => {
+    const host = file()
+    const seek = jest.spyOn(host.provider, 'seekTo')
+    host.currentTime = 10
+    expect(seek).toHaveBeenCalledWith(10)
+    host.volume = 0.5
+    expect(host.volume).toBe(0.5)
+    expect(host.player.volume).toBe(0.5)
+    host.muted = true
+    expect(host.muted).toBe(true)
+    expect(host.player.muted).toBe(true)
+    host.muted = false
+    expect(host.muted).toBe(false)
+    expect(host.player.muted).toBe(false)
+  })
+
+  test('readyState turns 1 with the duration; buffered is the <video>\'s own for a file, and YouTube\'s loaded fraction as one range', async () => {
+    const host = file()
+    expect(host.readyState).toBe(0)
+    expect(typeof host.buffered.length).toBe('number')
+    host.provider.setDuration(60)
+    expect(host.readyState).toBe(1)
+
+    const yt = element('<video-background src="https://www.youtube.com/watch?v=dQw4w9WgXcQ"></video-background>')
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(yt.buffered.length).toBe(0)
+    const player = { playVideo: jest.fn(), getDuration: () => 60, seekTo: jest.fn(), getVideoLoadedFraction: () => 0.5 }
+    players[0].options.events.onReady({ target: player })
+    expect(yt.buffered.length).toBe(1)
+    expect(yt.buffered.start(0)).toBe(0)
+    expect(yt.buffered.end(0)).toBe(30)
+  })
+
+  test('an element with nothing built answers the <video> names at rest rather than throwing', () => {
+    const host = element('<video-background></video-background>')
+    expect(host.readyState).toBe(0)
+    expect(host.buffered.length).toBe(0)
+    expect(() => { host.currentTime = 5; host.volume = 0.5; host.muted = true }).not.toThrow()
+  })
+})
+
+describe('loading the YouTube API', () => {
+  // A fresh copy of the module: the promise is per document and every other YouTube test in
+  // this file has already resolved the shared one against the `YT.loaded` stub.
+  const fresh = async () => {
+    let loaded
+    await jest.isolateModulesAsync(async () => { loaded = await import('../lib/load.mjs') })
+    return loaded
+  }
+
+  test('resolves even when another library takes the ready hook without chaining it', async () => {
+    jest.useFakeTimers()
+    const saved = window.YT
+    window.YT = { loaded: 0 }
+    try {
+      const { loadYouTubeAPI, YOUTUBE_READY_INTERVAL } = await fresh()
+      let settled = false
+      const ready = loadYouTubeAPI().then(() => { settled = true })
+      document.querySelector('script[src="https://www.youtube.com/player_api"]').dispatchEvent(new Event('load'))
+      window.onYouTubeIframeAPIReady = () => {} // the other library, overwriting
+      window.YT.loaded = 1
+      await jest.advanceTimersByTimeAsync(YOUTUBE_READY_INTERVAL)
+      await ready
+      expect(settled).toBe(true)
+    } finally {
+      window.YT = saved
+      jest.useRealTimers()
+      document.querySelector('script[src="https://www.youtube.com/player_api"]')?.remove()
+    }
+  })
+
+  test('gives up, loudly, on an API that loads but never comes up', async () => {
+    jest.useFakeTimers()
+    const saved = window.YT
+    window.YT = { loaded: 0 }
+    try {
+      const { loadYouTubeAPI, YOUTUBE_READY_INTERVAL, YOUTUBE_READY_TRIES } = await fresh()
+      const failed = expect(loadYouTubeAPI()).rejects.toThrow('never became ready')
+      document.querySelector('script[src="https://www.youtube.com/player_api"]').dispatchEvent(new Event('load'))
+      await jest.advanceTimersByTimeAsync(YOUTUBE_READY_INTERVAL * YOUTUBE_READY_TRIES)
+      await failed
+    } finally {
+      window.YT = saved
+      jest.useRealTimers()
+      document.querySelector('script[src="https://www.youtube.com/player_api"]')?.remove()
+    }
+  })
+})
+
 describe('the element', () => {
   test('is defined under its tag, and the class is the export', () => {
     expect(customElements.get('video-background')).toBe(VideoBackground)
@@ -363,17 +520,20 @@ describe('the element', () => {
     expect(host.player.hasAttribute('muted')).toBe(true)
     expect(host.player.hasAttribute('playsinline')).toBe(true)
     expect(host.currentState).toBe('notstarted')
-    expect(host.paused).toBe(false)
+    expect(host.paused).toBe(true)
   })
 
-  test('the ready event carries the element itself, and bubbles', () => {
+  test('loadedmetadata fires on the element once the duration is known, and like a <video>\'s does not bubble', () => {
     const wrap = element('<div></div>')
-    let detail
-    wrap.addEventListener('video-background-ready', (event) => { detail = event.detail })
     const host = document.createElement('video-background')
     host.setAttribute('src', 'https://example.com/clip.mp4')
+    const seen = events(host, 'loadedmetadata')
+    const escaped = events(wrap, 'loadedmetadata')
     wrap.appendChild(host)
-    expect(detail).toBe(host)
+    expect(seen).toEqual([])
+    host.provider.setDuration(60)
+    expect(seen).toEqual(['loadedmetadata'])
+    expect(escaped).toEqual([])
   })
 
   test('a YouTube src builds a no-cookie iframe carrying the id, the title and the api flag', () => {
@@ -432,6 +592,18 @@ describe('the element', () => {
     expect(document.querySelectorAll('#video-background-style').length).toBe(1)
   })
 
+  test('unstyled takes every rule off the element and leaves the parent alone, and fit-box fills it with a block', () => {
+    const wrap = element('<div><video-background unstyled fit-box src="https://example.com/clip.mp4"></video-background></div>')
+    const host = wrap.firstElementChild
+    expect(host.params.unstyled).toBe(true)
+    expect(wrap.style.position).toBe('')
+    const rules = Array.from(document.getElementById('video-background-style').sheet.cssRules)
+    expect(rules.length).toBeGreaterThan(0)
+    for (const rule of rules) expect(rule.selectorText).toContain(':not([unstyled])')
+    expect(host.player.style.display).toBe('block')
+    expect(host.player.style.width).toBe('100%')
+  })
+
   test('a poster is written as an escaped url, and a static parent is made the containing block', () => {
     const wrap = element('<div><video-background src="https://example.com/clip.mp4" poster=\'a"b.png\'></video-background></div>')
     const host = wrap.firstElementChild
@@ -442,15 +614,16 @@ describe('the element', () => {
 
   test('removing src tears the player down and announces it; setting it again rebuilds', () => {
     const host = element('<video-background src="https://example.com/clip.mp4"></video-background>')
-    const seen = events(host, 'video-background-destroyed', 'video-background-ready')
+    const seen = events(host, 'emptied', 'loadedmetadata')
 
     host.removeAttribute('src')
-    expect(seen).toEqual(['video-background-destroyed'])
+    expect(seen).toEqual(['emptied'])
     expect(host.provider).toBeNull()
     expect(host.querySelector('video')).toBeNull()
 
     host.setAttribute('src', 'https://example.com/other.mp4')
-    expect(seen).toEqual(['video-background-destroyed', 'video-background-ready'])
+    host.provider.setDuration(30)
+    expect(seen).toEqual(['emptied', 'loadedmetadata'])
     expect(host.querySelector('video > source').getAttribute('src')).toBe('https://example.com/other.mp4')
   })
 
@@ -471,9 +644,9 @@ describe('the element', () => {
 
   test('disconnecting tears the player down, so nothing outlives the element', () => {
     const host = element('<video-background src="https://example.com/clip.mp4"></video-background>')
-    const seen = events(host, 'video-background-destroyed')
+    const seen = events(host, 'emptied')
     host.remove()
-    expect(seen).toEqual(['video-background-destroyed'])
+    expect(seen).toEqual(['emptied'])
     expect(host.provider).toBeNull()
     expect(host.querySelector('video')).toBeNull()
   })
@@ -545,9 +718,9 @@ describe('the group', () => {
 
   test('the end of the current member steps the group, the end of another does not', () => {
     const stack = group()
-    stack.stack[1].dispatchEvent(new CustomEvent('video-background-ended', { bubbles: true, detail: stack.stack[1] }))
+    stack.stack[1].dispatchEvent(new Event('ended'))
     expect(stack.current).toBe(0)
-    stack.stack[0].dispatchEvent(new CustomEvent('video-background-ended', { bubbles: true, detail: stack.stack[0] }))
+    stack.stack[0].dispatchEvent(new Event('ended'))
     expect(stack.current).toBe(1)
   })
 
@@ -555,7 +728,7 @@ describe('the group', () => {
     const stack = group()
     stack.remove()
     expect(stack.listeners).toBeNull()
-    stack.stack[0].dispatchEvent(new CustomEvent('video-background-ended', { bubbles: true, detail: stack.stack[0] }))
+    stack.stack[0].dispatchEvent(new Event('ended'))
     expect(stack.current).toBe(0)
   })
 })
@@ -577,7 +750,7 @@ describe('control teardown', () => {
     return pairs
   }
   const outstanding = (pairs) => pairs.map(([name]) => name)
-  const dispatch = (element, name) => element.dispatchEvent(new CustomEvent(name, { detail: element }))
+  const dispatch = (element, name) => element.dispatchEvent(new Event(name))
 
   // A stub target: any element carrying the members the controls read and call. The real
   // element proxies exactly these onto its provider.
@@ -611,7 +784,7 @@ describe('control teardown', () => {
     const buttonTracked = track(button)
 
     const toggle = new PlayToggle(button)
-    dispatch(target, 'video-background-play')
+    dispatch(target, 'play')
     expect(button.getAttribute('aria-pressed')).toBe('true')
     button.click()
     expect(target.pause).toHaveBeenCalledTimes(1)
@@ -619,7 +792,7 @@ describe('control teardown', () => {
     toggle.destroy()
     expect(outstanding(targetTracked)).toEqual([])
     expect(outstanding(buttonTracked)).toEqual([])
-    dispatch(target, 'video-background-pause')
+    dispatch(target, 'pause')
     expect(button.getAttribute('aria-pressed')).toBe('true')
     button.click()
     expect(target.pause).toHaveBeenCalledTimes(1)
@@ -631,7 +804,8 @@ describe('control teardown', () => {
     const buttonTracked = track(button)
 
     const toggle = new MuteToggle(button)
-    dispatch(target, 'video-background-mute')
+    target.muted = true
+    dispatch(target, 'volumechange')
     expect(button.getAttribute('aria-pressed')).toBe('true')
     button.click()
     expect(target.unmute).toHaveBeenCalledTimes(1)
@@ -639,7 +813,8 @@ describe('control teardown', () => {
     toggle.destroy()
     expect(outstanding(targetTracked)).toEqual([])
     expect(outstanding(buttonTracked)).toEqual([])
-    dispatch(target, 'video-background-unmute')
+    target.muted = false
+    dispatch(target, 'volumechange')
     expect(button.getAttribute('aria-pressed')).toBe('true')
     button.click()
     expect(target.unmute).toHaveBeenCalledTimes(1)
@@ -659,7 +834,7 @@ describe('control teardown', () => {
 })
 
 describe('control ARIA', () => {
-  const dispatch = (element, name) => element.dispatchEvent(new CustomEvent(name, { detail: element }))
+  const dispatch = (element, name) => element.dispatchEvent(new Event(name))
   let target
   beforeEach(() => {
     target = element('<div id="hero"></div>')
@@ -678,8 +853,9 @@ describe('control ARIA', () => {
       expect(button.getAttribute('aria-pressed')).toBe('false')
     }
 
-    dispatch(target, 'video-background-play')
-    dispatch(target, 'video-background-mute')
+    dispatch(target, 'play')
+    target.muted = true
+    dispatch(target, 'volumechange')
     expect(play.getAttribute('aria-pressed')).toBe('true')
     expect(mute.getAttribute('aria-pressed')).toBe('true')
     expect(play.textContent).toBe('Play')
@@ -688,10 +864,10 @@ describe('control ARIA', () => {
     expect(mute.hasAttribute('aria-label')).toBe(false)
   })
 
-  test('a mute toggle reads the muted start off the ready event', () => {
+  test('a mute toggle reads the muted start off loadedmetadata', () => {
     const mute = element('<button data-target="#hero">Mute</button>')
     new MuteToggle(mute)
-    dispatch(target, 'video-background-ready')
+    dispatch(target, 'loadedmetadata')
     expect(mute.getAttribute('aria-pressed')).toBe('true')
   })
 
@@ -718,7 +894,7 @@ describe('control ARIA', () => {
 })
 
 describe('seek bar motion', () => {
-  const dispatch = (element, name) => element.dispatchEvent(new CustomEvent(name, { detail: element }))
+  const dispatch = (element, name) => element.dispatchEvent(new Event(name))
   let target, input
   beforeEach(() => {
     jest.useFakeTimers()
@@ -732,7 +908,7 @@ describe('seek bar motion', () => {
   const shown = () => parseFloat(input.value)
 
   test('the bar moves on animation frames between two time reports', () => {
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     expect(shown()).toBe(10)
     jest.advanceTimersByTime(100)
     expect(shown()).toBeGreaterThan(10)
@@ -740,34 +916,34 @@ describe('seek bar motion', () => {
   })
 
   test('a report a few milliseconds behind the bar is jitter and the bar holds', () => {
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     jest.advanceTimersByTime(200)
     const before = shown()
     target.currentTime = 10.1
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     expect(shown()).toBe(before)
   })
 
   test('a report a second or more behind is a loop, and the bar snaps back', () => {
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     target.currentTime = 2
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     expect(shown()).toBe(2)
   })
 
   test('a paused video holds the bar where the last report put it', () => {
     target.currentState = 'paused'
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     jest.advanceTimersByTime(500)
     expect(shown()).toBe(10)
   })
 
   test('dragging locks the bar to the thumb, and letting go seeks', () => {
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     input.value = 40
     input.dispatchEvent(new Event('input'))
     target.currentTime = 11
-    dispatch(target, 'video-background-time-update')
+    dispatch(target, 'timeupdate')
     jest.advanceTimersByTime(50)
     expect(shown()).toBe(40)
     input.dispatchEvent(new Event('change'))
@@ -775,8 +951,8 @@ describe('seek bar motion', () => {
   })
 
   test('a destroyed background resets the bar', () => {
-    dispatch(target, 'video-background-time-update')
-    dispatch(target, 'video-background-destroyed')
+    dispatch(target, 'timeupdate')
+    dispatch(target, 'emptied')
     jest.advanceTimersByTime(50)
     expect(shown()).toBe(0)
   })

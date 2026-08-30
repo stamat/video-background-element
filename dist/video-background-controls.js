@@ -73,9 +73,9 @@ var VideoBackgroundControls = (() => {
       seekBars.get(this.target).add(this);
       nameInput(this.inputElem, "Seek");
       this.listeners = [
-        [this.target, "video-background-time-update", this.onTimeUpdate.bind(this)],
-        [this.target, "video-background-seeked", this.onSeeked.bind(this)],
-        [this.target, "video-background-destroyed", this.onDestroyed.bind(this)],
+        [this.target, "timeupdate", this.onTimeUpdate.bind(this)],
+        [this.target, "seeked", this.onSeeked.bind(this)],
+        [this.target, "emptied", this.onDestroyed.bind(this)],
         [this.inputElem, "input", this.onInput.bind(this)],
         [this.inputElem, "change", this.onChange.bind(this)]
       ];
@@ -147,10 +147,12 @@ var VideoBackgroundControls = (() => {
       if (!this.target) return;
       this.active = initToggle(element);
       this.listeners = [
-        [this.target, "video-background-state-change", this.onStateChange.bind(this)],
-        [this.target, "video-background-play", this.onPlay.bind(this)],
-        [this.target, "video-background-pause", this.onPause.bind(this)],
-        [this.target, "video-background-destroyed", this.onPause.bind(this)],
+        [this.target, "playing", this.onStateChange.bind(this)],
+        [this.target, "waiting", this.onStateChange.bind(this)],
+        [this.target, "play", this.onPlay.bind(this)],
+        [this.target, "pause", this.onPause.bind(this)],
+        [this.target, "ended", this.onPause.bind(this)],
+        [this.target, "emptied", this.onPause.bind(this)],
         [this.element, "click", this.onClick.bind(this)]
       ];
       attach(this.listeners);
@@ -189,10 +191,9 @@ var VideoBackgroundControls = (() => {
       if (!this.target) return;
       this.active = initToggle(element);
       this.listeners = [
-        [this.target, "video-background-ready", this.onReady.bind(this)],
-        [this.target, "video-background-mute", this.onMute.bind(this)],
-        [this.target, "video-background-unmute", this.onUnmute.bind(this)],
-        [this.target, "video-background-destroyed", this.onUnmute.bind(this)],
+        [this.target, "loadedmetadata", this.onLoaded.bind(this)],
+        [this.target, "volumechange", this.onVolumeChange.bind(this)],
+        [this.target, "emptied", this.onEmptied.bind(this)],
         [this.element, "click", this.onClick.bind(this)]
       ];
       attach(this.listeners);
@@ -206,13 +207,13 @@ var VideoBackgroundControls = (() => {
       this.active = active;
       this.element.setAttribute("aria-pressed", active);
     }
-    onReady() {
+    onLoaded() {
       if (this.target.muted) this.setActive(true);
     }
-    onMute() {
-      this.setActive(true);
+    onVolumeChange() {
+      this.setActive(Boolean(this.target.muted));
     }
-    onUnmute() {
+    onEmptied() {
       this.setActive(false);
     }
     onClick() {
@@ -251,9 +252,9 @@ var VideoBackgroundControls = (() => {
       this.map = new Map(this.stack.map((element, index) => [element, index]));
       this.current = 0;
       this.listeners = [
-        ["video-background-ended", this.onVideoEnded.bind(this)],
-        ["video-background-seeked", this.onVideoSeeked.bind(this)],
-        ["video-background-ready", this.onVideoReady.bind(this)]
+        ["ended", this.onVideoEnded.bind(this)],
+        ["seeked", this.onVideoSeeked.bind(this)],
+        ["loadedmetadata", this.onVideoReady.bind(this)]
       ];
       for (const element of this.stack) {
         for (const [eventName, handler] of this.listeners) element.addEventListener(eventName, handler);
@@ -270,7 +271,7 @@ var VideoBackgroundControls = (() => {
       return this.stack[this.current];
     }
     onVideoReady(event) {
-      const video = event.detail;
+      const video = event.target;
       if (video !== this.currentElement) return;
       if (video.params.muted) this.muted = true;
       if (!video.isIntersecting || !video.params.autoplay) return;
@@ -285,7 +286,7 @@ var VideoBackgroundControls = (() => {
       }
     }
     onVideoSeeked(event) {
-      const index = this.map.get(event.detail);
+      const index = this.map.get(event.target);
       if (this.current !== index) this.setCurrent(index, true);
     }
     setCurrent(index, seek) {
@@ -311,7 +312,7 @@ var VideoBackgroundControls = (() => {
       if (backwardRewind) emit(this, "video-background-group-backward-rewind");
     }
     onVideoEnded(event) {
-      if (event.detail !== this.currentElement) return;
+      if (event.target !== this.currentElement) return;
       this.next();
     }
     next() {
