@@ -31,7 +31,9 @@ On `script/publish`, `script/changelog` cuts this section into a released entry
 in the same commit as the version bump, and the entry becomes the body of the
 GitHub release verbatim.
 
-## [Unreleased] — playback speed
+## [Unreleased]
+
+## [1.2.0] - 2026-08-30 — playback speed
 
 The element speaks the `<video>` API, and `playbackRate` was the one part of the playback
 half missing from it: a hero at half speed meant reaching past the element for
