@@ -1,0 +1,61 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write # required for trusted publishing (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Trusted publishing, whichever registry you are on: it trusts *this
+      # workflow in this repository* over OIDC, so there is no token to store,
+      # rotate or leak, and the artifact gets a provenance attestation.
+      # Configure the publisher on the registry side first.
+      #
+      # The attestation names the repository it was built from, and the registry
+      # rejects the upload unless the manifest names the same one — so the
+      # manifest needs its repository field filled in (npm: `repository.url`,
+      # PyPI: `project.urls`, RubyGems: `source_code_uri`). Miss it and the
+      # publish fails only at the first tag, after the release is already cut:
+      # `422 … "repository.url" is "", expected to match …`.
+      #
+      # npm — https://docs.npmjs.com/trusted-publishers
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm # trusted publishing requires npm >= 11.5.1
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish
+        run: npm publish
+
+      # PyPI — https://docs.pypi.org/trusted-publishers/
+      # - uses: actions/setup-python@v6
+      #   with: { python-version: "3.x" }
+      # - run: pipx run build
+      # - uses: pypa/gh-action-pypi-publish@release/v1
+      #
+      # RubyGems — https://guides.rubygems.org/trusted-publishing/
+      # - uses: ruby/setup-ruby@v1
+      #   with: { ruby-version: "3.4", bundler-cache: true }
+      # - uses: rubygems/release-gem@v1
+      #
+      # Packagist takes no publish step at all: it reads the tags off this
+      # repository. Point a webhook at it once and delete this workflow.

@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+# Write $1 into whatever file holds this project's version. The one script in
+# here that has to know the language — script/publish calls it if it exists, and
+# a project versioned only by its git tag can delete it.
+#
+# Replace the body with the line that fits:
+#
+#   npm       npm version "$1" --no-git-tag-version --allow-same-version
+#   python    uv version "$1"          # or: poetry version "$1"
+#   ruby      sed -i '' -E "s/VERSION = .*/VERSION = '$1'/" lib/<gem>/version.rb
+#   php       composer config version "$1"     # if the package pins one at all
+#   plain     echo "$1" > VERSION
+#
+# Commit nothing — script/publish stages and commits what you write.
+
+set -euo pipefail
+
+version="${1:-}"
+[ -n "$version" ] || { echo "usage: script/version <version>" >&2; exit 1; }
+
+npm version "$version" --no-git-tag-version --allow-same-version

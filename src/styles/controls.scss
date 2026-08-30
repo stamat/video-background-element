@@ -1,0 +1,116 @@
+// The look of the controls, shipped as video-background-controls.css and optional: the
+// classes do their work without it. What is here is the part that is not obvious to write
+// - a <progress> for the played fill under a transparent <input type="range"> - and the
+// stacking a <video-background-group> needs, which the element itself never writes.
+
+:root {
+  --seek-bar-height: 6px;
+  --seek-bar-thumb-size: 12px;
+  --seek-bar-thumb-color: #fff;
+  --seek-bar-progress-color: #fff;
+  --seek-bar-color: rgba(255, 255, 255, 0.4);
+}
+
+// The group stacks its members over its own box and shows the first; the group toggles
+// `display` from there.
+:where(video-background-group) {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+:where(video-background-group) > video-background + video-background {
+  display: none;
+}
+
+.seek-bar-wrapper {
+  position: relative;
+  width: 100%;
+  height: var(--seek-bar-height);
+  background: var(--seek-bar-color);
+}
+
+.seek-bar-progress {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+
+  &::-webkit-progress-bar { background: transparent; }
+  &::-webkit-progress-value { background: var(--seek-bar-progress-color); }
+  &::-moz-progress-bar { background: var(--seek-bar-progress-color); }
+}
+
+// Taller than the bar so it can be grabbed, transparent so the progress shows through.
+.seek-bar {
+  appearance: none;
+  position: relative;
+  top: calc(50% - 10px);
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+
+  &::-webkit-slider-runnable-track {
+    appearance: none;
+    height: var(--seek-bar-height);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  &::-moz-range-track {
+    appearance: none;
+    width: 100%;
+    height: var(--seek-bar-height);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  &::-moz-range-progress {
+    background: transparent;
+    border: 0;
+  }
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: var(--seek-bar-thumb-size);
+    height: var(--seek-bar-thumb-size);
+    margin-top: calc(var(--seek-bar-height) / 2);
+    transform: translateY(-50%);
+    cursor: pointer;
+    background: var(--seek-bar-thumb-color);
+    border: 0;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+  }
+
+  &::-moz-range-thumb {
+    appearance: none;
+    width: var(--seek-bar-thumb-size);
+    height: var(--seek-bar-thumb-size);
+    cursor: pointer;
+    background: var(--seek-bar-thumb-color);
+    border: 0;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+  }
+}
+
+// The thumb only appears on hover, so an idle bar reads as a progress indicator.
+.seek-bar-wrapper:hover .seek-bar:not([disabled])::-webkit-slider-thumb { opacity: 1; }
+.seek-bar-wrapper:hover .seek-bar:not([disabled])::-moz-range-thumb { opacity: 1; }

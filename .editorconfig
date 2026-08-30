@@ -1,0 +1,23 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# The languages whose communities settled on four
+[*.{py,php,java,cs}]
+indent_size = 4
+
+[*.md]
+# Two trailing spaces are a line break in Markdown
+trim_trailing_whitespace = false
+
+[{Makefile,*.mk}]
+indent_style = tab
+
+[*.{bat,cmd,ps1}]
+end_of_line = crlf

@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # Set package-ecosystem to yours — npm, pip, uv, bundler, composer, cargo,
+  # gomod, docker. Monthly is the interval that gets read; weekly becomes noise
+  # you start ignoring, which is worse than not having it at all.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # One pull request per monthly batch, not one per package, with development
+    # and production kept apart — a toolchain bump reads differently from one
+    # that reaches the people installing this. `dependency-type` in a group is
+    # npm, bundler, composer, mix, maven and pip only; elsewhere group by
+    # `patterns` instead.
+    groups:
+      production:
+        dependency-type: "production"
+      development:
+        dependency-type: "development"
+    # Don't pick up a release that is hours old. A compromised or broken
+    # version is usually caught and pulled within a few days, and nothing here
+    # needs to be on the newest thing the same afternoon. `default-days` works
+    # everywhere; the semver-specific ones are ecosystem-dependent.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+
+  # The workflows pin action majors, and those move too.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
+    cooldown:
+      default-days: 7

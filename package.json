@@ -1,0 +1,75 @@
+{
+  "name": "video-background",
+  "version": "0.0.0",
+  "description": "<video-background>: a video background from a YouTube, Vimeo or video file link, as a custom element.",
+  "main": "video-background.js",
+  "exports": {
+    ".": {
+      "import": "./src/video-background.mjs",
+      "default": "./video-background.js"
+    },
+    "./controls": {
+      "import": "./src/controls.mjs",
+      "default": "./video-background-controls.js"
+    },
+    "./custom-elements.json": "./custom-elements.json",
+    "./*": "./*",
+    "./controls.css": "./video-background-controls.css"
+  },
+  "customElements": "custom-elements.json",
+  "files": [
+    "CHANGELOG.md",
+    "src",
+    "!src/__tests__",
+    "!src/styles",
+    "custom-elements.json",
+    "video-background.js",
+    "video-background.js.map",
+    "video-background.min.js",
+    "video-background-controls.js",
+    "video-background-controls.js.map",
+    "video-background-controls.min.js",
+    "video-background-controls.css",
+    "video-background-controls.min.css"
+  ],
+  "homepage": "https://github.com/stamat/video-background",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stamat/video-background.git"
+  },
+  "keywords": [
+    "video-background",
+    "youtube",
+    "vimeo",
+    "background",
+    "custom-element",
+    "web-component",
+    "embed",
+    "hero"
+  ],
+  "author": "Nikola Stamatovic <@stamat>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stamat/video-background/issues"
+  },
+  "devDependencies": {
+    "@custom-elements-manifest/analyzer": "^0.11.0",
+    "code-preview-element": "^3.0.3",
+    "eslint": "^9.39.5",
+    "globals": "^17.8.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "poops": "^3.0.0",
+    "poops-docs-theme": "^5.1.1"
+  },
+  "scripts": {
+    "dev": "poops",
+    "manifest": "cem analyze --globs src/video-background.mjs src/controls.mjs --outdir . --quiet",
+    "build": "npm run manifest && poops -b",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
+    "lint": "npx eslint ."
+  },
+  "dependencies": {
+    "book-of-spells": "^2.8.0"
+  }
+}

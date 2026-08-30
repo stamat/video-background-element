@@ -1,0 +1,73 @@
+/* Loaded into every <code-preview> frame on the demo page and nowhere else, after the
+   package's own video-background-controls.css: the box a sample's background fills and
+   the look of the sample's buttons. Nothing here is required by the element - it
+   positions itself and sizes its player. */
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.hero {
+  position: relative;
+  height: 20rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  background: #111;
+}
+
+.hero .inner {
+  position: relative;
+  z-index: 1;
+  padding: 1rem 1.5rem 3rem;
+}
+
+.hero h2,
+.hero p {
+  margin: 0 0 0.5rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.hero h2 {
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.hero button {
+  font: inherit;
+  font-size: 0.875rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  margin: 0.25rem 0.15rem;
+  cursor: pointer;
+}
+
+.hero button:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.hero button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.85);
+  color: #111;
+}
+
+.hero > .seek-bar-wrapper,
+.hero > .seek-bars {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  width: auto;
+  z-index: 2;
+}
+
+.seek-bars {
+  display: flex;
+  gap: 8px;
+}

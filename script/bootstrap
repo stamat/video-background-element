@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# Install everything needed to work on this project, from a fresh clone.
+#
+# Replace the body, keep the name: CI and every contributor call this file, and
+# neither should have to know what is underneath it.
+
+set -euo pipefail
+
+npm ci

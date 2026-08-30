@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# Produce the artifacts the project ships.
+#
+# Replace the body, keep the name: CI and every contributor call this file, and
+# neither should have to know what is underneath it.
+
+set -euo pipefail
+
+npm run build

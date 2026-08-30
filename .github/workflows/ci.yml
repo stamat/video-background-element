@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# This workflow only reads the repository; say so, and the token can do no more.
+permissions:
+  contents: read
+
+# A new push to the same branch or pull request supersedes the run in flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # The only language-specific step; everything below it only calls scripts.
+      - uses: actions/setup-node@v6
+        with: { node-version: 24, cache: npm }
+
+      - name: Install dependencies
+        run: script/bootstrap
+
+      - name: Lint
+        run: script/lint
+
+      - name: Test
+        run: script/test
+
+      - name: Build
+        run: script/build
+
+      # The bundles, the controls css and the manifest are committed, so a build
+      # that changes them means someone shipped source without its output.
+      - name: Fail if the build output is out of date
+        run: git diff --exit-code

@@ -1,0 +1,1080 @@
+{
+  "schemaVersion": "1.0.0",
+  "readme": "",
+  "modules": [
+    {
+      "kind": "javascript-module",
+      "path": "src/video-background.mjs",
+      "declarations": [
+        {
+          "kind": "function",
+          "name": "parseSource",
+          "parameters": [
+            {
+              "name": "link"
+            }
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "DEFAULTS",
+          "type": {
+            "text": "object"
+          },
+          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'always-play': false, 'start-at': 0, 'end-at': 0, 'volume': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background' }"
+        },
+        {
+          "kind": "function",
+          "name": "readParams",
+          "parameters": [
+            {
+              "name": "element"
+            },
+            {
+              "name": "defaults",
+              "default": "DEFAULTS"
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "description": "A video background from a YouTube, Vimeo or video file link: a cover-fit, muted,\nlooping player behind the element's parent, paused while off-screen. The element is the\ninstance - its playback API and state live on it, and every event carries it in\n`event.detail`.\n\nOptions are read from attributes when the element builds, which is when it connects with\na `src`. Only `src`, `start-at` and `end-at` are watched afterwards; the rest take effect\non the next build, which removing and re-adding `src` forces.",
+          "name": "VideoBackground",
+          "members": [
+            {
+              "kind": "method",
+              "name": "build"
+            },
+            {
+              "kind": "method",
+              "name": "rebuild",
+              "parameters": [
+                {
+                  "name": "src"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "styleHost",
+              "parameters": [
+                {
+                  "name": "source"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "observe"
+            },
+            {
+              "kind": "method",
+              "name": "onIntersect",
+              "parameters": [
+                {
+                  "name": "entry"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "onVisibilityChange"
+            },
+            {
+              "kind": "method",
+              "name": "onWindowResize"
+            },
+            {
+              "kind": "method",
+              "name": "teardown"
+            },
+            {
+              "kind": "field",
+              "name": "type",
+              "description": "`youtube`, `vimeo` or `video`",
+              "type": {
+                "text": "string | undefined"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "player",
+              "description": "The YouTube or Vimeo player object, or the `<video>` element",
+              "type": {
+                "text": "object | null"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "playerElement",
+              "description": "The iframe or `<video>` inside the element",
+              "type": {
+                "text": "HTMLIFrameElement | HTMLVideoElement | null"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "paused",
+              "description": "True after `pause()` - a pause the visitor asked for, which scrolling and tab switches never override",
+              "type": {
+                "text": "boolean"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "muted",
+              "type": {
+                "text": "boolean"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "volume",
+              "description": "`0` to `1`",
+              "type": {
+                "text": "number"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "currentState",
+              "description": "`notstarted`, `playing`, `paused`, `buffering` or `ended`",
+              "type": {
+                "text": "string"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "currentTime",
+              "description": "Seconds",
+              "type": {
+                "text": "number"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "duration",
+              "description": "Seconds, capped by `end-at`",
+              "type": {
+                "text": "number"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "percentComplete",
+              "description": "`0` to `100`",
+              "type": {
+                "text": "number"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "field",
+              "name": "isIntersecting",
+              "description": "Whether the element is in the viewport",
+              "type": {
+                "text": "boolean"
+              },
+              "readonly": true
+            },
+            {
+              "kind": "method",
+              "name": "play"
+            },
+            {
+              "kind": "method",
+              "name": "pause"
+            },
+            {
+              "kind": "method",
+              "name": "softPlay",
+              "description": "Play without clearing `paused`, the way scrolling into view does"
+            },
+            {
+              "kind": "method",
+              "name": "softPause",
+              "description": "Pause without setting `paused`, the way scrolling out of view does"
+            },
+            {
+              "kind": "method",
+              "name": "mute"
+            },
+            {
+              "kind": "method",
+              "name": "unmute"
+            },
+            {
+              "kind": "method",
+              "name": "getVolume",
+              "return": {
+                "type": {
+                  "text": "number | Promise<number> | undefined"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "setVolume",
+              "parameters": [
+                {
+                  "name": "volume",
+                  "description": "`0` to `1`",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "seek",
+              "parameters": [
+                {
+                  "name": "percentage",
+                  "description": "`0` to `100`",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "seekTo",
+              "parameters": [
+                {
+                  "name": "seconds",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "setStartAt",
+              "parameters": [
+                {
+                  "name": "seconds",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "setEndAt",
+              "parameters": [
+                {
+                  "name": "seconds",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "setSource",
+              "parameters": [
+                {
+                  "name": "url",
+                  "type": {
+                    "text": "string"
+                  }
+                }
+              ],
+              "description": "The same as setting `src`"
+            },
+            {
+              "kind": "method",
+              "name": "resize",
+              "description": "Re-fit the player to the box; the element does this itself on resize"
+            },
+            {
+              "kind": "method",
+              "name": "timeToPercentage",
+              "parameters": [
+                {
+                  "name": "time",
+                  "description": "seconds",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ],
+              "return": {
+                "type": {
+                  "text": "number"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "percentageToTime",
+              "parameters": [
+                {
+                  "name": "percentage",
+                  "description": "`0` to `100`",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ],
+              "return": {
+                "type": {
+                  "text": "number"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "shouldPlay",
+              "return": {
+                "type": {
+                  "text": "boolean"
+                }
+              }
+            },
+            {
+              "kind": "field",
+              "name": "provider",
+              "type": {
+                "text": "null"
+              },
+              "default": "null"
+            },
+            {
+              "kind": "field",
+              "name": "params",
+              "type": {
+                "text": "null"
+              },
+              "default": "null"
+            },
+            {
+              "kind": "field",
+              "name": "intersectionObserver",
+              "type": {
+                "text": "null"
+              },
+              "default": "null"
+            },
+            {
+              "kind": "field",
+              "name": "resizeObserver",
+              "type": {
+                "text": "null"
+              },
+              "default": "null"
+            }
+          ],
+          "events": [
+            {
+              "name": "video-background-destroyed",
+              "type": {
+                "text": "CustomEvent"
+              },
+              "description": "The player was torn down: `src` removed, or the element disconnected."
+            },
+            {
+              "description": "The player can play. A video file is ready at once.",
+              "name": "video-background-ready"
+            },
+            {
+              "description": "Playback started.",
+              "name": "video-background-play"
+            },
+            {
+              "description": "Playback paused.",
+              "name": "video-background-pause"
+            },
+            {
+              "description": "The video reached its end, or `end-at`. With `loop` on it restarts right after.",
+              "name": "video-background-ended"
+            },
+            {
+              "description": "The position moved, through `seek`, `seekTo` or a seek bar.",
+              "name": "video-background-seeked"
+            },
+            {
+              "description": "The position advanced while playing, about four times a second.",
+              "name": "video-background-time-update"
+            },
+            {
+              "description": "`currentState` changed: `notstarted`, `playing`, `paused`, `buffering` or `ended`.",
+              "name": "video-background-state-change"
+            },
+            {
+              "description": "Sound off.",
+              "name": "video-background-mute"
+            },
+            {
+              "description": "Sound on.",
+              "name": "video-background-unmute"
+            },
+            {
+              "description": "`volume` changed.",
+              "name": "video-background-volume-change"
+            },
+            {
+              "description": "The player was re-sized to the box.",
+              "name": "video-background-resize"
+            }
+          ],
+          "attributes": [
+            {
+              "name": "src",
+              "type": {
+                "text": "string"
+              },
+              "description": "A YouTube, Vimeo or video file url. Removing it tears the player down, setting it again rebuilds; a url of the same type swaps the video in place."
+            },
+            {
+              "name": "start-at",
+              "type": {
+                "text": "number"
+              },
+              "description": "Seconds to start from.",
+              "default": "0"
+            },
+            {
+              "name": "end-at",
+              "type": {
+                "text": "number"
+              },
+              "description": "Seconds to stop at, `0` for the full duration.",
+              "default": "0"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Start as soon as the element is in view.",
+              "name": "autoplay",
+              "default": "true"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Start muted - which is what lets autoplay through.",
+              "name": "muted",
+              "default": "true"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Restart when the video ends.",
+              "name": "loop",
+              "default": "true"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Build the player on touch devices too. Off, the element keeps only its poster there.",
+              "name": "mobile",
+              "default": "true"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Keep playing off-screen instead of pausing.",
+              "name": "always-play",
+              "default": "false"
+            },
+            {
+              "type": {
+                "text": "number"
+              },
+              "description": "`0` to `1`, applied on the first unmute.",
+              "name": "volume",
+              "default": "1"
+            },
+            {
+              "type": {
+                "text": "string"
+              },
+              "description": "Image url shown behind the player until the first frame.",
+              "name": "poster"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Use the platform's own thumbnail as the poster. YouTube and Vimeo only.",
+              "name": "load-background",
+              "default": "false"
+            },
+            {
+              "type": {
+                "text": "string"
+              },
+              "description": "Aspect ratio the player is sized by to cover the box.",
+              "name": "resolution",
+              "default": "16:9"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Stretch to the box instead of covering it.",
+              "name": "fit-box",
+              "default": "false"
+            },
+            {
+              "type": {
+                "text": "number"
+              },
+              "description": "Pixels of overscan past the box, hiding the platform's edge chrome.",
+              "name": "offset",
+              "default": "100"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "Embed from the privacy-preserving domains.",
+              "name": "no-cookie",
+              "default": "true"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "`loading=\"lazy\"` on the iframe. YouTube and Vimeo only.",
+              "name": "lazyloading",
+              "default": "false"
+            },
+            {
+              "type": {
+                "text": "boolean"
+              },
+              "description": "On a touch device, start a muted autoplay on the first touch, for the low power modes that block autoplay.",
+              "name": "force-on-low-battery",
+              "default": "false"
+            },
+            {
+              "type": {
+                "text": "string"
+              },
+              "description": "Accessible name of the player frame.",
+              "name": "title",
+              "default": "Video background"
+            }
+          ],
+          "superclass": {
+            "name": "HTMLElement"
+          },
+          "tagName": "video-background",
+          "customElement": true,
+          "summary": "A cover-fit video background from a YouTube, Vimeo or video file link."
+        }
+      ],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "parseSource",
+          "declaration": {
+            "name": "parseSource",
+            "module": "src/video-background.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "DEFAULTS",
+          "declaration": {
+            "name": "DEFAULTS",
+            "module": "src/video-background.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "readParams",
+          "declaration": {
+            "name": "readParams",
+            "module": "src/video-background.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "VideoBackground",
+          "declaration": {
+            "name": "VideoBackground",
+            "module": "src/video-background.mjs"
+          }
+        },
+        {
+          "kind": "custom-element-definition",
+          "name": "video-background",
+          "declaration": {
+            "name": "VideoBackground",
+            "module": "src/video-background.mjs"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "src/controls.mjs",
+      "declarations": [
+        {
+          "kind": "function",
+          "name": "seekBarsFor",
+          "parameters": [
+            {
+              "name": "target"
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "description": "",
+          "name": "SeekBar",
+          "members": [
+            {
+              "kind": "method",
+              "name": "destroy"
+            },
+            {
+              "kind": "method",
+              "name": "onTimeUpdate"
+            },
+            {
+              "kind": "method",
+              "name": "tick"
+            },
+            {
+              "kind": "method",
+              "name": "onSeeked"
+            },
+            {
+              "kind": "method",
+              "name": "onDestroyed"
+            },
+            {
+              "kind": "method",
+              "name": "onInput",
+              "parameters": [
+                {
+                  "name": "event"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "onChange",
+              "parameters": [
+                {
+                  "name": "event"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "setProgress",
+              "parameters": [
+                {
+                  "name": "value"
+                }
+              ]
+            },
+            {
+              "kind": "field",
+              "name": "lock",
+              "type": {
+                "text": "boolean"
+              },
+              "default": "false"
+            },
+            {
+              "kind": "field",
+              "name": "frame",
+              "type": {
+                "text": "null"
+              },
+              "default": "null"
+            },
+            {
+              "kind": "field",
+              "name": "shownTime",
+              "type": {
+                "text": "number"
+              },
+              "default": "0"
+            },
+            {
+              "kind": "field",
+              "name": "element",
+              "default": "element"
+            },
+            {
+              "kind": "field",
+              "name": "progressElem"
+            },
+            {
+              "kind": "field",
+              "name": "inputElem"
+            },
+            {
+              "kind": "field",
+              "name": "target"
+            },
+            {
+              "kind": "field",
+              "name": "listeners",
+              "type": {
+                "text": "array"
+              },
+              "default": "[ [this.target, 'video-background-time-update', this.onTimeUpdate.bind(this)], [this.target, 'video-background-seeked', this.onSeeked.bind(this)], [this.target, 'video-background-destroyed', this.onDestroyed.bind(this)], [this.inputElem, 'input', this.onInput.bind(this)], [this.inputElem, 'change', this.onChange.bind(this)] ]"
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "description": "",
+          "name": "PlayToggle",
+          "members": [
+            {
+              "kind": "method",
+              "name": "destroy"
+            },
+            {
+              "kind": "method",
+              "name": "setActive",
+              "parameters": [
+                {
+                  "name": "active"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "onStateChange"
+            },
+            {
+              "kind": "method",
+              "name": "onPlay"
+            },
+            {
+              "kind": "method",
+              "name": "onPause"
+            },
+            {
+              "kind": "method",
+              "name": "onClick"
+            },
+            {
+              "kind": "field",
+              "name": "element",
+              "default": "element"
+            },
+            {
+              "kind": "field",
+              "name": "target"
+            },
+            {
+              "kind": "field",
+              "name": "active"
+            },
+            {
+              "kind": "field",
+              "name": "listeners",
+              "type": {
+                "text": "array"
+              },
+              "default": "[ [this.target, 'video-background-state-change', this.onStateChange.bind(this)], [this.target, 'video-background-play', this.onPlay.bind(this)], [this.target, 'video-background-pause', this.onPause.bind(this)], [this.target, 'video-background-destroyed', this.onPause.bind(this)], [this.element, 'click', this.onClick.bind(this)] ]"
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "description": "",
+          "name": "MuteToggle",
+          "members": [
+            {
+              "kind": "method",
+              "name": "destroy"
+            },
+            {
+              "kind": "method",
+              "name": "setActive",
+              "parameters": [
+                {
+                  "name": "active"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "onReady"
+            },
+            {
+              "kind": "method",
+              "name": "onMute"
+            },
+            {
+              "kind": "method",
+              "name": "onUnmute"
+            },
+            {
+              "kind": "method",
+              "name": "onClick"
+            },
+            {
+              "kind": "field",
+              "name": "element",
+              "default": "element"
+            },
+            {
+              "kind": "field",
+              "name": "target"
+            },
+            {
+              "kind": "field",
+              "name": "active"
+            },
+            {
+              "kind": "field",
+              "name": "listeners",
+              "type": {
+                "text": "array"
+              },
+              "default": "[ [this.target, 'video-background-ready', this.onReady.bind(this)], [this.target, 'video-background-mute', this.onMute.bind(this)], [this.target, 'video-background-unmute', this.onUnmute.bind(this)], [this.target, 'video-background-destroyed', this.onUnmute.bind(this)], [this.element, 'click', this.onClick.bind(this)] ]"
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "description": "Plays the `<video-background>` elements inside it as one playlist: one shown at a time,\nstepping to the next when the current one ends. Only `display` is toggled between the\nmembers - stacking them over the same box is your CSS.",
+          "name": "VideoBackgroundGroup",
+          "members": [
+            {
+              "kind": "method",
+              "name": "init"
+            },
+            {
+              "kind": "method",
+              "name": "destroy"
+            },
+            {
+              "kind": "field",
+              "name": "currentElement",
+              "readonly": true
+            },
+            {
+              "kind": "method",
+              "name": "onVideoReady",
+              "parameters": [
+                {
+                  "name": "event"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "levelSeekBars"
+            },
+            {
+              "kind": "method",
+              "name": "onVideoSeeked",
+              "parameters": [
+                {
+                  "name": "event"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "setCurrent",
+              "parameters": [
+                {
+                  "name": "index"
+                },
+                {
+                  "name": "seek"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "onVideoEnded",
+              "parameters": [
+                {
+                  "name": "event"
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "next"
+            },
+            {
+              "kind": "method",
+              "name": "prev"
+            },
+            {
+              "kind": "method",
+              "name": "unmute"
+            },
+            {
+              "kind": "method",
+              "name": "mute"
+            },
+            {
+              "kind": "method",
+              "name": "pause"
+            },
+            {
+              "kind": "method",
+              "name": "play"
+            },
+            {
+              "kind": "field",
+              "name": "stack",
+              "type": {
+                "text": "array"
+              },
+              "default": "[]"
+            },
+            {
+              "kind": "field",
+              "name": "current",
+              "type": {
+                "text": "number"
+              },
+              "default": "0"
+            },
+            {
+              "kind": "field",
+              "name": "playing",
+              "type": {
+                "text": "boolean"
+              },
+              "default": "false"
+            },
+            {
+              "kind": "field",
+              "name": "muted",
+              "type": {
+                "text": "boolean"
+              },
+              "default": "true"
+            },
+            {
+              "kind": "field",
+              "name": "listeners",
+              "type": {
+                "text": "null"
+              },
+              "default": "null"
+            }
+          ],
+          "events": [
+            {
+              "description": "The current member was started through the group.",
+              "name": "video-background-group-play"
+            },
+            {
+              "description": "The current member was paused through the group.",
+              "name": "video-background-group-pause"
+            },
+            {
+              "description": "Every member was muted.",
+              "name": "video-background-group-mute"
+            },
+            {
+              "description": "Every member was unmuted.",
+              "name": "video-background-group-unmute"
+            },
+            {
+              "description": "The group stepped forward.",
+              "name": "video-background-group-next"
+            },
+            {
+              "description": "The group stepped back.",
+              "name": "video-background-group-previous"
+            },
+            {
+              "description": "`next()` ran past the last member and wrapped to the first.",
+              "name": "video-background-group-forward-rewind"
+            },
+            {
+              "description": "`prev()` ran past the first member and wrapped to the last.",
+              "name": "video-background-group-backward-rewind"
+            }
+          ],
+          "superclass": {
+            "name": "HTMLElement"
+          },
+          "tagName": "video-background-group",
+          "customElement": true,
+          "summary": "A playlist of the video backgrounds inside it."
+        }
+      ],
+      "exports": [
+        {
+          "kind": "js",
+          "name": "seekBarsFor",
+          "declaration": {
+            "name": "seekBarsFor",
+            "module": "src/controls.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "SeekBar",
+          "declaration": {
+            "name": "SeekBar",
+            "module": "src/controls.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "PlayToggle",
+          "declaration": {
+            "name": "PlayToggle",
+            "module": "src/controls.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "MuteToggle",
+          "declaration": {
+            "name": "MuteToggle",
+            "module": "src/controls.mjs"
+          }
+        },
+        {
+          "kind": "js",
+          "name": "VideoBackgroundGroup",
+          "declaration": {
+            "name": "VideoBackgroundGroup",
+            "module": "src/controls.mjs"
+          }
+        },
+        {
+          "kind": "custom-element-definition",
+          "name": "video-background-group",
+          "declaration": {
+            "name": "VideoBackgroundGroup",
+            "module": "src/controls.mjs"
+          }
+        }
+      ]
+    }
+  ]
+}

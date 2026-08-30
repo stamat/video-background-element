@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# Cut a release: pick the version, write it wherever it lives, cut the changelog,
+# build, commit, tag, push, and offer to open the GitHub release with the
+# changelog entry as its body. Pushing the tag is what triggers publish.yml.
+#
+# Language-agnostic by delegation — everything project-specific is another script
+# that this one runs if it is there:
+#
+#   script/version <version>    write the version into whatever file holds it
+#   script/changelog <version>  cut CHANGELOG.md into a released entry
+#   script/build                produce the artifacts the release ships
+#
+# The current version comes from the last `v*` tag, so a project whose version
+# lives in package.json, pyproject.toml, a gemspec, composer.json or nowhere at
+# all is not a special case here.
+#
+# With love, @stamat
+
+set -euo pipefail
+
+[ $# -le 1 ] || { echo "usage: script/publish [version]" >&2; exit 1; }
+
+git rev-parse --git-dir >/dev/null 2>&1 || { echo "Not a git repository" >&2; exit 1; }
+
+current="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+current="${current#v}"
+: "${current:=0.0.0}"
+
+version="${1:-}"
+
+if [ -z "$version" ]; then
+  case "$current" in
+    # a prerelease or build version is not mine to guess the next of
+    *-* | *+*) suggested="" ;;
+    *.*.*) suggested="${current%.*}.$(( ${current##*.} + 1 ))" ;;
+    *) suggested="" ;;
+  esac
+
+  if [ -n "$suggested" ]; then
+    read -r -p "Last release was v$current. Release v$suggested? (y/n) " answer
+    [ "$answer" = y ] && version="$suggested"
+  fi
+
+  if [ -z "$version" ]; then
+    read -r -p "Version to release: v" version
+  fi
+fi
+
+version="${version#v}"
+
+if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)*$'; then
+  echo "Not a semantic version: $version" >&2
+  exit 1
+fi
+
+if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+  echo "v$version is already tagged" >&2
+  exit 1
+fi
+
+# `git add -A` below picks up everything in the tree, so what is already in it
+# has to be a deliberate part of this release
+if [ -n "$(git status --porcelain)" ]; then
+  git status --short
+  read -r -p "Uncommitted changes will go into the release commit. Continue? (y/n) " answer
+  [ "$answer" = y ] || exit 1
+fi
+
+# script/changelog leaves the entry it cut here, for the GitHub release below
+notes="${TMPDIR:-/tmp}/$(basename "$PWD")-release-notes-v$version.md"
+rm -f "$notes"
+
+commit_all() {
+  git add -A
+  if git diff --cached --quiet; then
+    echo "Nothing staged, skipping commit: $1"
+  else
+    git commit -m "$1"
+  fi
+}
+
+if [ -x script/version ]; then
+  script/version "$version"
+fi
+
+if [ -x script/changelog ]; then
+  script/changelog "$version"
+fi
+
+commit_all "Bump version to $version"
+
+if [ -x script/build ]; then
+  script/build
+  commit_all "Build version $version"
+fi
+
+# Commits first: a push that fails leaves no tag behind, so the retry is just
+# running this again rather than deleting a tag by hand.
+git push
+git tag "v$version"
+git push --tags
+
+echo "Pushed v$version — publish.yml takes it from here"
+
+command -v gh >/dev/null 2>&1 || { echo "gh is not installed, no GitHub release created"; exit 0; }
+
+read -r -p "Create the GitHub release? (y/n) " answer
+[ "$answer" = y ] || exit 0
+
+if [ -f "$notes" ]; then
+  echo "Release notes from the CHANGELOG entry: $notes"
+  # GitHub puts the body above its generated notes, so the entry keeps the top
+  # and the compare link lands under it
+  gh release create "v$version" --title "v$version" --latest --notes-file "$notes" --generate-notes
+  # the release carries the notes now; a failing gh exits above and leaves the
+  # file where it is, for a retry by hand
+  rm -f "$notes"
+else
+  gh release create "v$version" --title "v$version" --latest --generate-notes
+fi

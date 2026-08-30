@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors and tools
+.vscode
+.history
+.idea
+.claude
+
+# Yours: the dependency directory, the build output, and anything with a secret
+# in it. Ignore what a build produces; commit what a release ships only when
+# consumers install straight from the repository.
+node_modules/
+_site/

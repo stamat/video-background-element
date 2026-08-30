@@ -1,0 +1,107 @@
+{
+  "scripts": [
+    {
+      "in": "src/video-background.mjs",
+      "out": "video-background.js",
+      "options": {
+        "sourcemap": true,
+        "minify": true,
+        "format": "iife",
+        "target": "es2019"
+      }
+    },
+    {
+      "in": "src/controls.mjs",
+      "out": "video-background-controls.js",
+      "options": {
+        "sourcemap": true,
+        "minify": true,
+        "format": "iife",
+        "target": "es2019",
+        "globalName": "VideoBackgroundControls"
+      }
+    },
+    {
+      "in": "node_modules/poops-docs-theme/src/prose.ts",
+      "out": "_site/js/prose.js",
+      "options": {
+        "minify": true,
+        "justMinified": true,
+        "format": "iife",
+        "target": "es2019"
+      }
+    }
+  ],
+  "banner": "/* {{ name }} v{{ version }} | {{ homepage }} | {{ license }} License */",
+  "exec": {
+    "scripts": "npm run manifest",
+    "markup": "node script/preview.mjs"
+  },
+  "serve": {
+    "port": 4040,
+    "base": "/_site"
+  },
+  "livereload": true,
+  "watch": [
+    "src",
+    "site"
+  ],
+  "includePaths": [
+    "node_modules"
+  ],
+  "styles": [
+    {
+      "in": "src/styles/controls.scss",
+      "out": "video-background-controls.css",
+      "options": {
+        "minify": true
+      }
+    },
+    {
+      "in": "src/styles/prose.scss",
+      "out": "_site/css/prose.css",
+      "options": {
+        "minify": true,
+        "justMinified": true
+      }
+    }
+  ],
+  "copy": [
+    {
+      "in": [
+        "video-background.min.js",
+        "video-background-controls.min.js",
+        "video-background-controls.min.css",
+        "custom-elements.json",
+        "node_modules/code-preview-element/dist/code-preview-hljs.min.js",
+        "node_modules/code-preview-element/dist/code-preview-options.min.js",
+        "node_modules/code-preview-element/dist/code-preview.min.css",
+        "site/preview.css"
+      ],
+      "out": "_site"
+    }
+  ],
+  "markup": {
+    "in": "site",
+    "out": "_site",
+    "options": {
+      "site": {
+        "title": "video-background",
+        "brand": "video-background",
+        "brandMark": "\ud83d\udcfa",
+        "description": "<video-background>: a video background from a YouTube, Vimeo or video file link, as a custom element.",
+        "lang": "en",
+        "url": "https://stamat.github.io/video-background",
+        "repo": "https://github.com/stamat/video-background",
+        "branch": "main",
+        "iconLinks": [
+          {
+            "title": "npm",
+            "url": "https://www.npmjs.com/package/video-background",
+            "icon": "npm"
+          }
+        ]
+      }
+    }
+  }
+}

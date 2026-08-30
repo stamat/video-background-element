@@ -1,0 +1,82 @@
+#!/bin/bash
+#
+# Cut `## [Unreleased]` out of CHANGELOG.md into a released entry, and leave that
+# entry in the temp directory so script/publish can hand it to
+# `gh release create --notes-file`.
+#
+# No CHANGELOG.md, or nothing written under [Unreleased]: does nothing, and says
+# so. Markdown and git only — nothing here knows what the project is written in.
+#
+# With love, @stamat
+
+set -euo pipefail
+
+version="${1:-}"
+[ -n "$version" ] || { echo "usage: script/changelog <version>" >&2; exit 1; }
+
+changelog="CHANGELOG.md"
+[ -f "$changelog" ] || { echo "No $changelog, nothing to cut"; exit 0; }
+
+today="$(date +%Y-%m-%d)"
+notes="${TMPDIR:-/tmp}/$(basename "$PWD")-release-notes-v$version.md"
+rewritten="$(mktemp)"
+trap 'rm -f "$rewritten"' EXIT
+
+rm -f "$notes"
+
+# A CHANGELOG that documents its own format — this one does — has `## [Unreleased]`
+# sitting inside a code fence, so a heading only counts when it is prose. Closing
+# a fence takes a marker at least as long as the one that opened it, the way
+# ````markdown wraps ```html.
+#
+# A fence left open swallows every heading under it, so nothing is found and the
+# release would go out with its changelog untouched — awk exits 3 to stop it.
+title="$(awk -v version="$version" -v today="$today" -v notes="$notes" -v out="$rewritten" '
+  BEGIN { fence = ""; state = 0 }
+  {
+    if (match($0, /^[ \t]*(`{3,}|~{3,})/)) {
+      marker = substr($0, RSTART, RLENGTH)
+      gsub(/^[ \t]+/, "", marker)
+      if (fence == "") fence = marker
+      else if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence)) fence = ""
+    }
+    prose = (fence == "")
+
+    if (state == 0 && prose && $0 ~ /^## \[Unreleased\]/) {
+      title = $0
+      sub(/^## \[Unreleased\][ \t]*/, "", title)
+      sub(/^(—|–|-)[ \t]*/, "", title)
+      print "## [Unreleased]" > out
+      print "" > out
+      if (title == "") printf "## [%s] - %s\n", version, today > out
+      else printf "## [%s] - %s — %s\n", version, today, title > out
+      print title
+      state = 1
+      next
+    }
+
+    if (state == 1 && prose && $0 ~ /^## /) state = 2
+    if (state == 1) print $0 > notes
+    print $0 > out
+  }
+  END { if (fence != "") exit 3 }
+' "$changelog")" || {
+  echo "$changelog has an unclosed code fence — every heading below it is invisible to this script. Close it and re-run." >&2
+  exit 1
+}
+
+if [ ! -f "$notes" ] || ! grep -q '[^[:space:]]' "$notes"; then
+  rm -f "$notes"
+  echo "[Unreleased] is empty, nothing to cut"
+  exit 0
+fi
+
+# The section arrives with the blank lines that surrounded it; the release body
+# should not open or close on an empty one. `sed` drops them from the top, the
+# command substitution drops them from the bottom.
+printf '%s\n' "$(sed -e '/./,$!d' "$notes")" > "$notes"
+
+cat "$rewritten" > "$changelog"
+
+echo "Cut [Unreleased] into ${version}${title:+ — $title}"
+echo "Wrote $notes"
