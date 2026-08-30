@@ -9,7 +9,7 @@
 // Deliberately not covered: anything needing a real YouTube, Vimeo or media player. jsdom
 // has no playback, no IntersectionObserver, no ResizeObserver and no network, so those
 // paths are exercised through their decision logic with stub receivers instead - what
-// breaks in a real browser is timing, and this cannot see it. The always-play fallback the
+// breaks in a real browser is timing, and this cannot see it. The off-screen playback the
 // missing IntersectionObserver forces is the one jsdom path that is also a real one.
 
 import { jest } from '@jest/globals'
@@ -119,7 +119,7 @@ describe('readParams', () => {
   test('an element with no attributes gets every default', () => {
     const params = readParams(element('<video-background></video-background>'))
     for (const key in DEFAULTS) {
-      if (key === 'always-play') continue // forced on below, jsdom has no IntersectionObserver
+      if (key === 'pause-offscreen') continue // forced off below, jsdom has no IntersectionObserver
       expect(params[key]).toBe(DEFAULTS[key])
     }
   })
@@ -140,9 +140,9 @@ describe('readParams', () => {
     expect(params.title).toBe('Video background')
   })
 
-  test('without IntersectionObserver there is no scroll gate, so always-play is forced on', () => {
+  test('without IntersectionObserver there is no scroll gate, so pause-offscreen is forced off', () => {
     expect('IntersectionObserver' in window).toBe(false)
-    expect(readParams(element('<video-background></video-background>'))['always-play']).toBe(true)
+    expect(readParams(element('<video-background></video-background>'))['pause-offscreen']).toBe(false)
   })
 })
 
@@ -249,7 +249,7 @@ describe('YouTube notstarted', () => {
   const notstarted = (overrides) => {
     const calls = []
     const clip = Object.assign(Object.create(YouTube.prototype), {
-      params: { autoplay: true, 'always-play': false, 'start-at': 0 },
+      params: { autoplay: true, 'pause-offscreen': true, 'start-at': 0 },
       isIntersecting: false,
       player: { playVideo: () => calls.push('playVideo') },
       seekTo: (seconds) => calls.push(`seekTo:${seconds}`),
@@ -264,13 +264,13 @@ describe('YouTube notstarted', () => {
     expect(notstarted()).toEqual([])
   })
 
-  test('an intersecting video starts, and always-play starts off-screen', () => {
+  test('an intersecting video starts, and one that never pauses off-screen starts there too', () => {
     expect(notstarted({ isIntersecting: true })).toEqual(['seekTo:0', 'playVideo'])
-    expect(notstarted({ params: { autoplay: true, 'always-play': true, 'start-at': 0 } })).toEqual(['seekTo:0', 'playVideo'])
+    expect(notstarted({ params: { autoplay: true, 'pause-offscreen': false, 'start-at': 0 } })).toEqual(['seekTo:0', 'playVideo'])
   })
 
   test('autoplay off means off, wherever the video sits', () => {
-    expect(notstarted({ isIntersecting: true, params: { autoplay: false, 'always-play': true, 'start-at': 0 } })).toEqual([])
+    expect(notstarted({ isIntersecting: true, params: { autoplay: false, 'pause-offscreen': false, 'start-at': 0 } })).toEqual([])
   })
 })
 
@@ -281,7 +281,7 @@ describe('shouldPlay', () => {
     paused: false,
     currentState: 'paused',
     isIntersecting: true,
-    params: { loop: true, autoplay: true, 'always-play': false }
+    params: { loop: true, autoplay: true, 'pause-offscreen': true }
   }
 
   test('plays an intersecting, autoplaying video', () => {
@@ -301,14 +301,14 @@ describe('shouldPlay', () => {
     expect(shouldPlay({ ...playable, isIntersecting: false })).toBe(false)
   })
 
-  test('always-play keeps a video going, it never starts one autoplay said not to', () => {
-    const pinned = { ...playable, isIntersecting: false, params: { ...playable.params, 'always-play': true, autoplay: false } }
+  test('pause-offscreen="false" keeps a video going, it never starts one autoplay said not to', () => {
+    const pinned = { ...playable, isIntersecting: false, params: { ...playable.params, 'pause-offscreen': false, autoplay: false } }
     expect(shouldPlay({ ...pinned, currentState: 'notstarted' })).toBe(false)
     expect(shouldPlay({ ...pinned, currentState: 'paused' })).toBe(false)
   })
 
-  test('plays off-screen when pinned with always-play', () => {
-    expect(shouldPlay({ ...playable, isIntersecting: false, params: { ...playable.params, 'always-play': true } })).toBe(true)
+  test('plays off-screen when pause-offscreen is off', () => {
+    expect(shouldPlay({ ...playable, isIntersecting: false, params: { ...playable.params, 'pause-offscreen': false } })).toBe(true)
   })
 
   test('stays ended when looping is off', () => {
@@ -324,7 +324,7 @@ describe('scrolling into view', () => {
       player: {},
       paused: false,
       currentState: 'notstarted',
-      params: { loop: true, autoplay: true, 'always-play': false },
+      params: { loop: true, autoplay: true, 'pause-offscreen': true },
       shouldPlay: Provider.prototype.shouldPlay,
       softPlay: jest.fn(),
       softPause: jest.fn(),
@@ -338,7 +338,7 @@ describe('scrolling into view', () => {
 
   test('an autoplaying video starts on scroll-in, one with autoplay off stays still', () => {
     expect(scrolled({}, true).softPlay).toHaveBeenCalledTimes(1)
-    const manual = scrolled({ params: { loop: true, autoplay: false, 'always-play': false } }, true)
+    const manual = scrolled({ params: { loop: true, autoplay: false, 'pause-offscreen': true } }, true)
     expect(manual.softPlay).not.toHaveBeenCalled()
     expect(manual.isIntersecting).toBe(true)
   })
@@ -348,11 +348,11 @@ describe('scrolling into view', () => {
   })
 
   test('an ended video with loop off does not restart on scroll-in', () => {
-    expect(scrolled({ currentState: 'ended', params: { loop: false, autoplay: true, 'always-play': false } }, true).softPlay).not.toHaveBeenCalled()
+    expect(scrolled({ currentState: 'ended', params: { loop: false, autoplay: true, 'pause-offscreen': true } }, true).softPlay).not.toHaveBeenCalled()
   })
 
   test('scrolling out pauses whatever autoplay says', () => {
-    const out = scrolled({ currentState: 'playing', params: { loop: true, autoplay: false, 'always-play': false } }, false)
+    const out = scrolled({ currentState: 'playing', params: { loop: true, autoplay: false, 'pause-offscreen': true } }, false)
     expect(out.softPause).toHaveBeenCalledTimes(1)
     expect(out.isIntersecting).toBe(false)
   })
@@ -465,7 +465,7 @@ describe('Vimeo background mode', () => {
   const vimeo = (params, player) => Object.assign(Object.create(Vimeo.prototype), {
     host: document.createElement('div'),
     playerElement: { style: {} },
-    params: { loop: false, autoplay: false, muted: false, 'always-play': false, 'start-at': 0, 'end-at': 0, 'force-on-low-battery': false, ...params },
+    params: { loop: false, autoplay: false, muted: false, 'pause-offscreen': true, 'start-at': 0, 'end-at': 0, 'force-on-low-battery': false, ...params },
     player: { play: jest.fn(), pause: jest.fn(), setLoop: jest.fn(), setMuted: jest.fn(), getDuration: () => Promise.resolve(42), ...player },
     muted: params.muted ?? false, volume: 1, paused: false, requested: false, initialPlay: false, initialVolume: false,
     currentState: 'notstarted', duration: 0, isIntersecting: true, is_mobile: false
@@ -498,7 +498,7 @@ describe('a source swap', () => {
   // The swap used to assign the iframe `src`, which navigates away from the document the
   // platform API shook hands with: no more state changes, so no more loop, and the fresh
   // embed read mute and autoplay off the URL rather than off the player.
-  const params = { autoplay: true, muted: true, loop: true, 'always-play': true, 'start-at': 5, 'end-at': 0, 'no-cookie': true }
+  const params = { autoplay: true, muted: true, loop: true, 'pause-offscreen': false, 'start-at': 5, 'end-at': 0, 'no-cookie': true }
   const youtube = (state) => Object.assign(Object.create(YouTube.prototype), {
     host: document.createElement('div'),
     playerElement: document.createElement('iframe'),
@@ -530,7 +530,7 @@ describe('a source swap', () => {
     held.setSource(source)
     expect(held.player.cueVideoById).toHaveBeenCalledWith({ videoId: 'dQw4w9WgXcQ', startSeconds: 5 })
 
-    const offscreen = youtube({ currentState: 'paused', isIntersecting: false, params: { ...params, 'always-play': false } })
+    const offscreen = youtube({ currentState: 'paused', isIntersecting: false, params: { ...params, 'pause-offscreen': true } })
     offscreen.setSource(source)
     expect(offscreen.player.cueVideoById).toHaveBeenCalled()
     expect(offscreen.player.loadVideoById).not.toHaveBeenCalled()
@@ -572,7 +572,7 @@ describe('a source swap', () => {
     const provider = Object.assign(Object.create(Vimeo.prototype), {
       host: document.createElement('div'),
       playerElement: document.createElement('iframe'),
-      params: { autoplay: true, muted: true, loop: true, 'always-play': true, 'start-at': 0, 'end-at': 0, 'no-cookie': true },
+      params: { autoplay: true, muted: true, loop: true, 'pause-offscreen': false, 'start-at': 0, 'end-at': 0, 'no-cookie': true },
       player: { loadVideo: jest.fn(() => Promise.resolve()), setLoop: jest.fn(), setMuted: jest.fn(), play: jest.fn(), pause: jest.fn() },
       muted: false, paused: false, currentState: 'playing', isIntersecting: true, duration: 42, currentTime: 10, percentComplete: 20
     })

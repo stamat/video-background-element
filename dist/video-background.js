@@ -191,7 +191,7 @@
     // otherwise an off-screen lazy video plays into the void until scrolled to
     autoplayNow() {
       if (this.paused) return false;
-      return this.params.autoplay && (this.params["always-play"] || this.isIntersecting);
+      return this.params.autoplay && (!this.params["pause-offscreen"] || this.isIntersecting);
     }
     // playback the visitor did not stop - buffering is playing that is still catching up
     isPlaying() {
@@ -256,7 +256,7 @@
     shouldPlay() {
       if (this.paused) return false;
       if (this.currentState === "ended" && !this.params.loop) return false;
-      if (this.params["always-play"] && this.params.autoplay && this.currentState !== "playing") return true;
+      if (!this.params["pause-offscreen"] && this.params.autoplay && this.currentState !== "playing") return true;
       if (this.isIntersecting && this.params.autoplay && this.currentState !== "playing") return true;
       return false;
     }
@@ -273,7 +273,7 @@
       const forceAutoplay = () => {
         if (!this.initialPlay && this.params.autoplay && this.params.muted) {
           this.softPlay();
-          if (!this.isIntersecting && !this.params["always-play"]) {
+          if (!this.isIntersecting && this.params["pause-offscreen"]) {
             this.softPause();
           }
         }
@@ -937,7 +937,7 @@
     "muted": true,
     "loop": true,
     "mobile": true,
-    "always-play": false,
+    "pause-offscreen": true,
     "start-at": 0,
     "end-at": 0,
     "volume": 1,
@@ -964,7 +964,7 @@
         params[key] = stringToType(value);
       }
     }
-    if (!("IntersectionObserver" in window)) params["always-play"] = true;
+    if (!("IntersectionObserver" in window)) params["pause-offscreen"] = false;
     return params;
   }
   var STYLE_ID = "video-background-style";
@@ -1047,7 +1047,7 @@
       }
     }
     observe() {
-      if ("IntersectionObserver" in window && !this.params["always-play"]) {
+      if ("IntersectionObserver" in window && this.params["pause-offscreen"]) {
         this.intersectionObserver = new IntersectionObserver((entries) => this.onIntersect(entries[entries.length - 1]));
         this.intersectionObserver.observe(this);
       }

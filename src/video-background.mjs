@@ -32,7 +32,7 @@ export const DEFAULTS = {
   'muted': true,
   'loop': true,
   'mobile': true,
-  'always-play': false,
+  'pause-offscreen': true,
   'start-at': 0,
   'end-at': 0,
   'volume': 1,
@@ -66,7 +66,7 @@ export function readParams(element, defaults = DEFAULTS) {
   }
 
   // no IntersectionObserver, no scroll gate - play regardless rather than never
-  if (!('IntersectionObserver' in window)) params['always-play'] = true;
+  if (!('IntersectionObserver' in window)) params['pause-offscreen'] = false;
 
   return params;
 }
@@ -117,7 +117,7 @@ function cssURL(url) {
  * @attr {boolean} [muted=true] - Start muted - which is what lets autoplay through.
  * @attr {boolean} [loop=true] - Restart when the video ends.
  * @attr {boolean} [mobile=true] - Build the player on touch devices too. Off, the element keeps only its poster there.
- * @attr {boolean} [always-play=false] - Keep playing off-screen instead of pausing.
+ * @attr {boolean} [pause-offscreen=true] - Pause while scrolled out of view. Off, the video keeps playing off-screen, and an autoplaying one starts there.
  * @attr {number} [start-at=0] - Seconds to start from.
  * @attr {number} [end-at=0] - Seconds to stop at, `0` for the full duration.
  * @attr {number} [volume=1] - `0` to `1`, applied on the first unmute.
@@ -223,7 +223,7 @@ export class VideoBackground extends HTMLElement {
   }
 
   observe() {
-    if ('IntersectionObserver' in window && !this.params['always-play']) {
+    if ('IntersectionObserver' in window && this.params['pause-offscreen']) {
       this.intersectionObserver = new IntersectionObserver((entries) => this.onIntersect(entries[entries.length - 1]));
       this.intersectionObserver.observe(this);
     }

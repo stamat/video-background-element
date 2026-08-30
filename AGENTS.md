@@ -133,5 +133,5 @@ Run this checklist before writing any code; stop at the first "no".
 - **Scripts inside a preview frame are deferred.** An inline `<script>` in a sample runs
   before them, so a sample that uses `VideoBackgroundControls` waits for `DOMContentLoaded`.
 - **jsdom has no playback and no observers.** `IntersectionObserver` missing forces
-  `always-play` on, which is also what the element does in an old browser; playback
+  `pause-offscreen` off, which is also what the element does in an old browser; playback
   decisions are tested by calling provider prototypes on stubs.

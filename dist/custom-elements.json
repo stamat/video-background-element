@@ -21,7 +21,7 @@
           "type": {
             "text": "object"
           },
-          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'always-play': false, 'start-at': 0, 'end-at': 0, 'volume': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background', 'unstyled': false }"
+          "default": "{ 'autoplay': true, 'muted': true, 'loop': true, 'mobile': true, 'pause-offscreen': true, 'start-at': 0, 'end-at': 0, 'volume': 1, 'poster': null, 'load-background': false, 'resolution': '16:9', 'fit-box': false, 'offset': 100, 'no-cookie': true, 'lazyloading': false, 'force-on-low-battery': false, 'title': 'Video background', 'unstyled': false }"
         },
         {
           "kind": "function",
@@ -504,9 +504,9 @@
               "type": {
                 "text": "boolean"
               },
-              "description": "Keep playing off-screen instead of pausing.",
-              "name": "always-play",
-              "default": "false"
+              "description": "Pause while scrolled out of view. Off, the video keeps playing off-screen, and an autoplaying one starts there.",
+              "name": "pause-offscreen",
+              "default": "true"
             },
             {
               "type": {

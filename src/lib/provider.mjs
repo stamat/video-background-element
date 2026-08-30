@@ -60,7 +60,7 @@ export class Provider {
   // otherwise an off-screen lazy video plays into the void until scrolled to
   autoplayNow() {
     if (this.paused) return false; // a held pause outlives a source swap
-    return this.params.autoplay && (this.params['always-play'] || this.isIntersecting);
+    return this.params.autoplay && (!this.params['pause-offscreen'] || this.isIntersecting);
   }
 
   // playback the visitor did not stop - buffering is playing that is still catching up
@@ -136,9 +136,9 @@ export class Provider {
   shouldPlay() {
     if (this.paused) return false;
     if (this.currentState === 'ended' && !this.params.loop) return false;
-    // always-play keeps a video going off-screen; starting one is still autoplay's call,
+    // off-screen playback keeps a video going; starting one is still autoplay's call,
     // or a tab switch would start a video the visitor never pressed play on
-    if (this.params['always-play'] && this.params.autoplay && this.currentState !== 'playing') return true;
+    if (!this.params['pause-offscreen'] && this.params.autoplay && this.currentState !== 'playing') return true;
     if (this.isIntersecting && this.params.autoplay && this.currentState !== 'playing') return true;
     return false;
   }
@@ -159,7 +159,7 @@ export class Provider {
       if (!this.initialPlay && this.params.autoplay && this.params.muted) {
         this.softPlay();
 
-        if (!this.isIntersecting && !this.params['always-play']) {
+        if (!this.isIntersecting && this.params['pause-offscreen']) {
           this.softPause();
         }
       }

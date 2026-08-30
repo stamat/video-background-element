@@ -136,7 +136,7 @@ bare way to write a false one.
 | `muted` | `true` | Start muted — which is what lets autoplay through |
 | `loop` | `true` | Restart when the video ends |
 | `mobile` | `true` | Build the player on touch devices too. Off, the element keeps only its poster there |
-| `always-play` | `false` | Keep playing off-screen instead of pausing |
+| `pause-offscreen` | `true` | Pause while scrolled out of view. Off, the video keeps playing off-screen, and an autoplaying one starts there |
 | `start-at` | `0` | Seconds to start from |
 | `end-at` | `0` | Seconds to stop at, `0` for the full duration |
 | `volume` | `1` | `0` to `1`, applied on the first unmute. Mobile browsers ignore it |
@@ -248,7 +248,7 @@ attributes that turn the background off, and its class marking the media:
   <video-background
     class="media-player-media"
     src="https://www.youtube.com/watch?v=…"
-    autoplay="false" muted="false" loop="false" always-play unstyled fit-box
+    autoplay="false" muted="false" loop="false" pause-offscreen="false" unstyled fit-box
     title="…"
   ></video-background>
   <!-- your controls -->
@@ -257,8 +257,8 @@ attributes that turn the background off, and its class marking the media:
 
 `unstyled` takes the element's own rules off it — the absolute cover over the parent, the
 `pointer-events: none`, the parent made a containing block — so it sits in the player's flow
-the way a `<video>` would, and `fit-box` fills it. `always-play` takes the scroll gate off,
-and the three `="false"` make it start with sound, once, and stop at the end.
+the way a `<video>` would, and `fit-box` fills it. `pause-offscreen="false"` takes the
+scroll gate off, and the other three make it start with sound, once, and stop at the end.
 
 ## Controls
 
@@ -351,8 +351,8 @@ agree; the manifest is never edited by hand.
 
 This is [youtube-background](https://github.com/stamat/youtube-background) continued under a
 name that admits it plays Vimeo and files too: the same providers, the `[data-vbg]` factory
-replaced by the element. The page markup changes, the options keep their names, and the
-events take the `<video>`'s. That package stays maintained for the `[data-vbg]` API — 2.0
+replaced by the element. The page markup changes, the options keep their names bar one, and
+the events take the `<video>`'s. That package stays maintained for the `[data-vbg]` API — 2.0
 dropped the jQuery plugin and moved its bundles into `dist/` — and keeps its own README and
 [demo](https://stamat.github.io/youtube-background/); nothing there breaks. New features land
 here. The [changelog](CHANGELOG.md) has every change with its reason; this is the map, against
@@ -366,6 +366,7 @@ youtube-background 2.0.
 | `backgrounds.add(element)` | append the element |
 | `backgrounds.destroy(element)` | remove `src`, or the element |
 | `destroyAll()`, `disconnect()`, `pauseAll()`, `playAll()`, `muteAll()`, `unmuteAll()`, `setVolumeAll()` | `document.querySelectorAll("video-background").forEach(…)` |
+| `data-vbg-always-play` | `pause-offscreen="false"` — the same scroll gate, named after what it does and on by default |
 | `data-vbg-uid`, `index`, `intersectionObserver`, `resizeObserver` | gone — the element observes itself |
 | `play-button`, `mute-button`, `pause`, and their Font Awesome markup | gone — `PlayToggle` and `MuteToggle` over a button of yours |
 | `inline-styles` | gone — the element's styles are a `:where()` stylesheet you override without `!important` |
@@ -447,8 +448,8 @@ observers and the ES2019 the bundles are built for are all older:
 * Safari 14+, iOS 14+
 
 Without `ResizeObserver` the element re-fits on the window's `resize` event instead;
-without `IntersectionObserver` there is no scroll gate and every element behaves as
-`always-play`. Versions are from [caniuse](https://caniuse.com/css-matches-pseudo).
+without `IntersectionObserver` there is no scroll gate and every element plays as if
+`pause-offscreen="false"`. Versions are from [caniuse](https://caniuse.com/css-matches-pseudo).
 
 ## Development
 
