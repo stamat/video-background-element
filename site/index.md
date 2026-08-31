@@ -180,6 +180,74 @@ empties the ones still to come, and a seek on any bar jumps the group to that me
 </script>
 ```
 
+A player over it, when a visitor should be the one pressing play.
+[`<media-player>`](https://github.com/stamat/media-player-element) wires controls you wrote
+to whatever carries the media API, and this element carries it — so one tag still answers
+for YouTube, Vimeo and a file, now with a scrubber over it. Six attributes talk it out of
+being a background: `unstyled` takes its own sheet off, `fit-box` fills the box instead of
+overscanning past it, `autoplay="false"`, `loop="false"` and `muted="false"` make it wait
+for a press and start with sound, and `pause-offscreen="false"` drops the scroll gate,
+which stops a video the moment somebody scrolls the page they were watching it on.
+`load-background` is the poster.
+
+The row is the player's whole one — scrubber, skip, play, clock, mute, volume, speed and
+fullscreen — and every control on it is markup, in the order it is written. Two of them
+have nothing behind them here and are honest about it: the buffered bar never fills,
+because this element emits no `progress`, and captions are not spoken at all. Speed is
+the one the manual's own frames say is missing, and it is not missing any more —
+`no-rate` reads `playbackRate` off the media element, which this one has had since 1.2.0.
+
+This is the only frame on the page that loads from a CDN — `media-player-element` is not a
+dependency of this package, and the recipe costs nothing to a page that skips it. The
+fold that packs a narrow row, keyboard shortcuts, captions and the rest are in
+[its manual](https://stamat.github.io/media-player-element/#youtube-and-vimeo-from-one-tag).
+
+```html preview
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/media-player-element@2.1.0/dist/media-player.bundle.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/media-player-element@2.1.0/dist/media-player-theme.bundle.min.css">
+<script type="module" src="https://cdn.jsdelivr.net/npm/media-player-element@2.1.0/dist/media-player.min.mjs"></script>
+<style>
+  body { padding: 1rem; }
+  /* `unstyled` drops this element's own sheet, and the poster is painted through it. Two
+     declarations buy that back; without them the thumbnail tiles. */
+  media-player video-background { background-size: cover; background-position: center; }
+</style>
+
+<media-player tabindex="0" role="region" aria-label="YouTube player" media-title="Family Guy: McStroke (Clip)" artist="TBS" on="mousemove:showControls;pointerdown:showControls;fullscreenchange@document:onFullscreenChange">
+  <video-background class="media-player-media" unstyled fit-box load-background lazyloading pause-offscreen="false" autoplay="false" loop="false" muted="false" src="https://www.youtube.com/watch?v=UIyoNvInzCI"></video-background>
+  <button class="media-player-overlay" on="click:togglePlay" aria-label="Play"></button>
+  <toolbar-elemental class="media-player-controls" aria-label="Playback" bind="isReady:if">
+    <slider-elemental class="media-player-scrubber" tooltip="thumb track" bind="timeFormatter:prop#format">
+      <progress-elemental><progress value="0" max="1" bind="buffered:prop#value;duration:prop#max"></progress></progress-elemental>
+      <input type="range" min="0" step="any" value="0" aria-label="Seek" disabled bind="duration:attr#max;currentTime:prop#value" on="pointerdown:beginScrub;keydown:beginScrub;input:scrub;change:seek;pointerup@document:endScrub;keyup:endScrub" />
+    </slider-elemental>
+    <tooltip-elemental>
+      <button on="click:skipBackward" key="ArrowLeft" aria-label="Skip backward 10 seconds" disabled><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+      <span>Skip backward</span>
+    </tooltip-elemental>
+    <tooltip-elemental>
+      <button on="click:togglePlay" key=" " bind="playLabel:attr#aria-label" disabled><span class="media-player-play-icon"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg></span><span class="media-player-pause-icon"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect fill="currentColor" x="14" y="3" width="5" height="18" rx="1"/><rect fill="currentColor" x="5" y="3" width="5" height="18" rx="1"/></svg></span></button>
+      <span bind="playLabel">Play</span>
+    </tooltip-elemental>
+    <tooltip-elemental>
+      <button on="click:skipForward" key="ArrowRight" aria-label="Skip forward 10 seconds" disabled><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+      <span>Skip forward</span>
+    </tooltip-elemental>
+    <span class="media-player-time"><span class="media-player-elapsed"><span bind="currentTime|time">00:00</span> / <span bind="duration|time">00:00</span></span> <span class="media-player-remaining" bind="remaining|time">00:00</span></span>
+    <tooltip-elemental>
+      <button on="click:toggleMute" bind="muteLabel:attr#aria-label" disabled><span class="media-player-volume-icon media-player-volume-icon-mute"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg></span><span class="media-player-volume-icon media-player-volume-icon-mid"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/></svg></span><span class="media-player-volume-icon media-player-volume-icon-full"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg></span></button>
+      <span bind="muteLabel">Mute</span>
+    </tooltip-elemental>
+    <slider-elemental class="media-player-volume" tooltip="thumb"><input type="range" min="0" max="100" step="5" aria-label="Volume" disabled bind="volumePercent:prop#value" on="input:setVolume" /></slider-elemental>
+    <select class="media-player-rate" aria-label="Speed" disabled bind="playbackRate:prop#value" on="change:setRate"><option value="0.5">0.5&times;</option><option value="1" selected>1&times;</option><option value="1.5">1.5&times;</option><option value="2">2&times;</option></select>
+    <tooltip-elemental>
+      <button on="click:toggleFullscreen" aria-label="Fullscreen" bind="isFullscreen:attr#aria-pressed|pressed" disabled><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+      <span>Fullscreen</span>
+    </tooltip-elemental>
+  </toolbar-elemental>
+</media-player>
+```
+
 The video files are the Blender Foundation's [Sintel](https://durian.blender.org/) and
 [Big Buck Bunny](https://peach.blender.org/) trailers, CC-BY 3.0, served from
 `media.w3.org`.

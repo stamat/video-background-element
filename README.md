@@ -254,8 +254,10 @@ the console as `video-background: …` rather than changing the speed. So `playb
 follows the player rather than the call: a rate the platform corrected arrives as a second
 `ratechange`, and the property moves with it.
 
-A player over it, with [media-player](https://github.com/stamat/media-player), is the
-attributes that turn the background off, and its class marking the media:
+A player over it, with
+[media-player-element](https://github.com/stamat/media-player-element), is the attributes
+that turn the background off, and its class marking the media — live, with a control row
+over it, [on the demo page](https://stamat.github.io/video-background-element/):
 
 ```html
 <media-player>

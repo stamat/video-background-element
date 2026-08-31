@@ -33,6 +33,18 @@ GitHub release verbatim.
 
 ## [Unreleased]
 
+### Added
+
+- **The demo page shows the element under a player.**
+  [media-player-element](https://github.com/stamat/media-player-element) 2.1.0 wires
+  controls you wrote to anything carrying the media API, and this element carries it, so
+  the sample is a scrubber, a play button and a clock over a YouTube embed — `unstyled`,
+  `fit-box`, `load-background` and `autoplay`, `loop`, `muted` and `pause-offscreen` all
+  written off, which is the recipe the README already carried without a live one to point
+  at. It is the only frame on the page that loads from a CDN; nothing about the package
+  changed, and no page that skips the recipe pays for it. The README's link to that
+  project follows its rename from `stamat/media-player`.
+
 ## [1.2.0] - 2026-08-30 — playback speed
 
 The element speaks the `<video>` API, and `playbackRate` was the one part of the playback
